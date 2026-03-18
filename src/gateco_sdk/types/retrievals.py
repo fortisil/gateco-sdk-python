@@ -54,16 +54,30 @@ class ExecuteRetrievalRequest(BaseModel):
 class SecuredRetrieval(BaseModel):
     """Full retrieval record returned by list / get / execute endpoints."""
 
-    id: str
+    model_config = {"extra": "allow"}
+
+    id: str | None = None
+    retrieval_id: str | None = None
     query: str | None = None
+    outcome: str | None = None
     principal_id: str | None = None
     connector_id: str | None = None
     organization_id: str | None = None
     status: str | None = None
+    matched_chunks: int = 0
+    allowed_chunks: int = 0
+    denied_chunks: int = 0
+    unresolved_chunks: int = 0
     total_results: int = 0
     granted_count: int = 0
     denied_count: int = 0
     outcomes: list[RetrievalOutcome] = []
+    results: list[dict[str, Any]] = []
+    denial_reasons: list[str] = []
+    policy_trace: list[dict[str, Any]] = []
+    warnings: list[str] = []
     created_at: datetime | None = None
     duration_ms: float | None = None
+    latency_ms: float | None = None
+    connector_latency_ms: float | None = None
     metadata: dict[str, Any] = {}

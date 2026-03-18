@@ -71,7 +71,22 @@ class PoliciesResource:
         resource_selectors: list[dict[str, Any]] | None = None,
         rules: list[dict[str, Any]] | None = None,
     ) -> Policy:
-        """Create a new policy."""
+        """Create a new policy.
+
+        Each rule's ``conditions`` list contains dicts with ``field``, ``operator``,
+        and ``value`` keys. Fields **must** be prefixed:
+
+        - ``resource.classification``, ``resource.sensitivity``, etc. for resource checks
+        - ``principal.roles``, ``principal.groups``, etc. for principal checks
+
+        Bare field names silently resolve against the principal.
+
+        **Operators:** ``eq``, ``ne``, ``in``, ``contains``, ``lte``, ``gte``.
+
+        **Deny policy note:** When a deny policy's selectors match but no rules match,
+        the policy-level ``effect=deny`` fires. Add a catch-all allow rule to deny only
+        specific conditions.
+        """
         body: dict[str, Any] = {"name": name, "type": type, "effect": effect}
         if description is not None:
             body["description"] = description

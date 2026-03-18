@@ -19,6 +19,8 @@ async def main():
         print(f"Created connector: {connector.id}")
 
         # Create a policy
+        # NOTE: condition fields MUST use resource. or principal. prefix.
+        # Bare names silently check principal attributes, not resources.
         policies = PoliciesResource(client)
         policy = await policies.create(
             name="Engineering Access",
@@ -27,19 +29,26 @@ async def main():
             description="Allow engineering team to access internal docs",
             rules=[
                 {
-                    "description": "Engineers can read internal",
+                    "description": "Engineers can read internal docs",
                     "effect": "allow",
+                    "priority": 1,
                     "conditions": [
                         {
-                            "field": "principal.department",
-                            "operator": "eq",
-                            "value": "engineering",
-                        }
+                            # resource. prefix -> checks resource metadata
+                            "field": "resource.classification",
+                            "operator": "lte",
+                            "value": "internal",
+                        },
+                        {
+                            # principal. prefix -> checks requesting identity
+                            "field": "principal.roles",
+                            "operator": "contains",
+                            "value": "engineer",
+                        },
                     ],
-                    "priority": 1,
                 }
             ],
-            resource_selectors=[{"classification": "internal"}],
+            resource_selectors=["connector_abc"],
         )
         print(f"Created policy: {policy.id}")
 

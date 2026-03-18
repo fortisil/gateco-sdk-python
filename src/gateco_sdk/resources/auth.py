@@ -2,12 +2,38 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from gateco_sdk.types.auth import TokenResponse
+from gateco_sdk.types.auth import TokenResponse, User
 
 if TYPE_CHECKING:
     from gateco_sdk.client import AsyncGatecoClient
+
+
+def _parse_login_response(data: dict[str, Any] | None) -> TokenResponse:
+    """Parse a login/signup response that may be flat or nested.
+
+    The backend returns ``LoginResponse`` = ``{user, tokens: {access_token, ...}}``.
+    The refresh endpoint returns a flat ``{access_token, ...}``.
+    This helper normalises both shapes into a ``TokenResponse``.
+    """
+    if data is None:
+        data = {}
+
+    # Nested format: { "user": {...}, "tokens": { "access_token": ... } }
+    if "tokens" in data and isinstance(data["tokens"], dict):
+        tokens = data["tokens"]
+        user_data = data.get("user")
+        user = User.model_validate(user_data) if user_data else None
+        return TokenResponse(
+            access_token=tokens["access_token"],
+            refresh_token=tokens.get("refresh_token"),
+            token_type=tokens.get("token_type", "bearer"),
+            user=user,
+        )
+
+    # Flat format: { "access_token": ..., "user": ... }
+    return TokenResponse.model_validate(data)
 
 
 class AuthResource:
@@ -30,7 +56,7 @@ class AuthResource:
             json={"email": email, "password": password},
             authenticate=False,
         )
-        token_resp = TokenResponse.model_validate(data)
+        token_resp = _parse_login_response(data)
         self._client._token_manager.set_tokens(
             token_resp.access_token,
             token_resp.refresh_token,
@@ -59,7 +85,7 @@ class AuthResource:
             },
             authenticate=False,
         )
-        token_resp = TokenResponse.model_validate(data)
+        token_resp = _parse_login_response(data)
         self._client._token_manager.set_tokens(
             token_resp.access_token,
             token_resp.refresh_token,
@@ -82,7 +108,7 @@ class AuthResource:
             json={"refresh_token": refresh_token},
             authenticate=False,
         )
-        token_resp = TokenResponse.model_validate(data)
+        token_resp = _parse_login_response(data)
         self._client._token_manager.set_tokens(
             token_resp.access_token,
             token_resp.refresh_token,

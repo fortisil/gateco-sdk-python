@@ -31,6 +31,11 @@ class Connector(BaseModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     metadata_resolution_mode: str | None = None
+    policy_readiness_level: int | None = None
+    connection_ready: bool | None = None
+    search_ready: bool | None = None
+    bound_vector_count: int | None = None
+    coverage_pct: float | None = None
 
 
 class CreateConnectorRequest(BaseModel):
@@ -45,10 +50,19 @@ class CreateConnectorRequest(BaseModel):
 class TestConnectorResponse(BaseModel):
     """Response from ``POST /api/connectors/{id}/test``."""
 
-    status: str
-    message: str | None = None
+    model_config = {"extra": "allow"}
+
+    success: bool
+    health_status: str | None = None
+    authenticated: bool = False
+    schema_discovered: bool = False
+    vector_ready: bool = False
+    server_version: str | None = None
+    resources: list[Any] = []
+    total_records: int | None = None
+    error: str | None = None
     latency_ms: float | None = None
-    details: dict[str, Any] | None = None
+    warnings: list[str] = []
 
 
 class SearchConfig(BaseModel):

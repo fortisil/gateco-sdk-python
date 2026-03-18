@@ -33,7 +33,21 @@ class PolicyEffect(str, Enum):
 
 
 class PolicyCondition(BaseModel):
-    """A single condition within a policy rule."""
+    """A single condition within a policy rule.
+
+    Fields must be prefixed with ``resource.`` or ``principal.``:
+
+    - **Resource fields:** ``resource.classification``, ``resource.sensitivity``,
+      ``resource.domain``, ``resource.labels``, ``resource.encryption_mode``
+    - **Principal fields:** ``principal.roles``, ``principal.groups``,
+      ``principal.attributes.*``
+
+    **Operators:** ``eq``, ``ne``, ``in``, ``contains``, ``lte``, ``gte``.
+
+    .. warning::
+        Bare field names (e.g., ``classification`` without prefix) silently resolve
+        against the **principal**, not the resource. Always use ``resource.classification``.
+    """
 
     field: str | None = None
     operator: str | None = None

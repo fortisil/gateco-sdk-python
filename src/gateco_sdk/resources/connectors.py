@@ -93,6 +93,7 @@ class ConnectorsResource:
         *,
         name: str | None = None,
         config: dict[str, Any] | None = None,
+        metadata_resolution_mode: str | None = None,
     ) -> Connector:
         """Update an existing connector."""
         body: dict[str, Any] = {}
@@ -100,6 +101,8 @@ class ConnectorsResource:
             body["name"] = name
         if config is not None:
             body["config"] = config
+        if metadata_resolution_mode is not None:
+            body["metadata_resolution_mode"] = metadata_resolution_mode
         data = await self._client._request(
             "PATCH", f"/api/connectors/{connector_id}", json=body
         )
@@ -154,7 +157,7 @@ class ConnectorsResource:
         data = await self._client._request(
             "PATCH",
             f"/api/connectors/{connector_id}/search-config",
-            json=search_config,
+            json={"search_config": search_config},
         )
         return data or {}
 
@@ -172,7 +175,7 @@ class ConnectorsResource:
         data = await self._client._request(
             "PATCH",
             f"/api/connectors/{connector_id}/ingestion-config",
-            json=ingestion_config,
+            json={"ingestion_config": ingestion_config},
         )
         return data or {}
 
