@@ -39,6 +39,52 @@ class RetrievalOutcome(BaseModel):
     text: str | None = None
 
 
+class FilterResult(BaseModel):
+    """A single result item within a retrieval response.
+
+    For filter endpoint results, ``resource_mode`` and ``policy_decision``
+    are populated.  For execute endpoint results, ``metadata`` and
+    ``external_resource_id`` are populated instead.  Extra fields from
+    either endpoint are preserved.
+    """
+
+    model_config = {"extra": "allow"}
+
+    vector_id: str = ""
+    score: float | None = None
+    text: str | None = None
+    resource_id: str | None = None
+    resource_mode: str | None = None  # "registered" | "synthetic" | "unresolved"
+    granted: bool = False
+    policy_decision: str | None = None  # "allowed" | "denied"
+    denial_reason: str | None = None
+    metadata: dict[str, Any] | None = None
+    external_resource_id: str | None = None
+
+    # Dict-like access for backwards compatibility with code that treats
+    # results as plain dicts (e.g., r.get("granted"), r["metadata"]).
+    def get(self, key: str, default: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        # Check extra fields stored by pydantic
+        extra = self.__pydantic_extra__ or {}
+        if key in extra:
+            return extra[key]
+        raise KeyError(key)
+
+    def __contains__(self, key: str) -> bool:
+        if hasattr(self, key):
+            return True
+        extra = self.__pydantic_extra__ or {}
+        return key in extra
+
+
 class ExecuteRetrievalRequest(BaseModel):
     """Request body for ``POST /api/retrievals/execute``."""
 
@@ -72,7 +118,7 @@ class SecuredRetrieval(BaseModel):
     granted_count: int = 0
     denied_count: int = 0
     outcomes: list[RetrievalOutcome] = []
-    results: list[dict[str, Any]] = []
+    results: list[FilterResult] = []
     denial_reasons: list[str] = []
     policy_trace: list[dict[str, Any]] = []
     warnings: list[str] = []

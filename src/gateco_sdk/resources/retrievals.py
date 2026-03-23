@@ -100,6 +100,34 @@ class RetrievalsResource:
             _fetch, SecuredRetrieval, per_page=per_page
         )
 
+    async def filter(
+        self,
+        *,
+        principal_id: str,
+        connector_id: str,
+        candidates: list[dict[str, Any]],
+        include_trace: bool = False,
+    ) -> SecuredRetrieval:
+        """Apply policy filtering to externally-sourced retrieval candidates.
+
+        Args:
+            principal_id: Identity of the requesting principal.
+            connector_id: Connector for policy context.
+            candidates: List of candidate dicts with vector_id, score, text,
+                and optionally resource_id or metadata.
+            include_trace: Whether to include full policy trace.
+        """
+        body: dict[str, Any] = {
+            "principal_id": principal_id,
+            "connector_id": connector_id,
+            "candidates": candidates,
+            "include_trace": include_trace,
+        }
+        data = await self._client._request(
+            "POST", "/api/retrievals/filter", json=body
+        )
+        return SecuredRetrieval.model_validate(data)
+
     async def get(self, retrieval_id: str) -> SecuredRetrieval:
         """Get a single retrieval by ID."""
         data = await self._client._request(

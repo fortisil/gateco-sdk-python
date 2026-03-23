@@ -1,5 +1,6 @@
 """API resource namespaces."""
 
+from gateco_sdk.resources.answers import AnswersResource
 from gateco_sdk.resources.audit import AuditResource
 from gateco_sdk.resources.auth import AuthResource
 from gateco_sdk.resources.billing import BillingResource
@@ -16,6 +17,7 @@ from gateco_sdk.resources.retrievals import RetrievalsResource
 from gateco_sdk.resources.simulator import SimulatorResource
 
 __all__ = [
+    "AnswersResource",
     "AuthResource",
     "ConnectorsResource",
     "IngestionResource",

@@ -131,3 +131,25 @@ class DataCatalogResource:
             "PATCH", f"/api/data-catalog/{resource_id}", json=body
         )
         return GatedResource.model_validate(data)
+
+    async def update_metadata(
+        self,
+        resource_id: str,
+        *,
+        classification: str | None = None,
+        sensitivity: str | None = None,
+        domain: str | None = None,
+        labels: list[str] | None = None,
+    ) -> GatedResource:
+        """Update policy-relevant metadata on an existing resource.
+
+        Only non-None fields are updated (partial update).
+        Changes take effect immediately for policy decisions.
+        """
+        return await self.update(
+            resource_id,
+            classification=classification,
+            sensitivity=sensitivity,
+            domain=domain,
+            labels=labels,
+        )

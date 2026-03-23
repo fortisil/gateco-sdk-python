@@ -1,5 +1,6 @@
 """Pydantic models for Gateco API request/response types."""
 
+from gateco_sdk.types.answers import Answer, Citation
 from gateco_sdk.types.audit import (
     AuditEvent,
     AuditEventType,
@@ -76,6 +77,7 @@ from gateco_sdk.types.retroactive import (
 from gateco_sdk.types.retrievals import (
     DenialReason,
     ExecuteRetrievalRequest,
+    FilterResult,
     PolicyTrace,
     RetrievalOutcome,
     SecuredRetrieval,
@@ -83,6 +85,9 @@ from gateco_sdk.types.retrievals import (
 from gateco_sdk.types.simulator import SimulationRequest, SimulationResult
 
 __all__ = [
+    # answers
+    "Answer",
+    "Citation",
     # common
     "PaginationMeta",
     "PaginatedResponse",
@@ -111,6 +116,7 @@ __all__ = [
     "ExecuteRetrievalRequest",
     "SecuredRetrieval",
     "RetrievalOutcome",
+    "FilterResult",
     "DenialReason",
     "PolicyTrace",
     # policies

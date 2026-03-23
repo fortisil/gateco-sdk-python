@@ -400,6 +400,82 @@ async def _cmd_retroactive_register(args: argparse.Namespace) -> None:
     _output(result)
 
 
+# -- ask (grounded answer) --------------------------------------------------
+
+
+async def _cmd_ask(args: argparse.Namespace) -> None:
+    """Execute a grounded answer synthesis."""
+    kwargs: dict[str, Any] = {}
+    if args.top_k is not None:
+        kwargs["top_k"] = args.top_k
+
+    async with _get_client() as client:
+        result = await client.answers.execute(
+            query=args.query,
+            principal_id=args.principal_id,
+            connector_id=args.connector_id,
+            **kwargs,
+        )
+    _output(result)
+
+
+# -- filter (policy filter) -------------------------------------------------
+
+
+async def _cmd_filter(args: argparse.Namespace) -> None:
+    """Apply policy filtering to external retrieval candidates."""
+    if args.candidates_file:
+        file_path = Path(args.candidates_file)
+        if not file_path.exists():
+            _error(f"Candidates file not found: {file_path}")
+        try:
+            candidates = json.loads(file_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            _error(f"Invalid JSON in candidates file: {exc}")
+    elif args.candidates:
+        try:
+            candidates = json.loads(args.candidates)
+        except json.JSONDecodeError as exc:
+            _error(f"Invalid JSON for --candidates: {exc}")
+    else:
+        _error("Either --candidates or --candidates-file is required")
+
+    if not isinstance(candidates, list):
+        _error("Candidates must be a JSON array")
+
+    async with _get_client() as client:
+        result = await client.retrievals.filter(
+            principal_id=args.principal_id,
+            connector_id=args.connector_id,
+            candidates=candidates,
+            include_trace=args.include_trace,
+        )
+    _output(result)
+
+
+# -- query (interactive REPL) -----------------------------------------------
+
+
+async def _cmd_query(args: argparse.Namespace) -> None:
+    """Launch the interactive query REPL."""
+    from gateco_sdk.query_repl import GatecoQueryREPL
+
+    creds = _load_credentials()
+    base_url = args.base_url or creds.get("base_url", _DEFAULT_BASE_URL)
+
+    repl = GatecoQueryREPL(
+        base_url=base_url,
+        email=args.email,
+        password=args.password,
+        connector_id=args.connector_id,
+        principal_id=args.principal_id,
+        debug=args.debug,
+        json_mode=args.json,
+        top_k=args.top_k,
+    )
+    await repl.run()
+
+
 # -- audit ------------------------------------------------------------------
 
 
@@ -462,7 +538,38 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     retrieve_parser.add_argument("--principal-id", required=True, help="Requesting principal ID")
     retrieve_parser.add_argument("--connector-id", required=True, help="Connector ID to query")
-    retrieve_parser.add_argument("--top-k", type=int, default=None, help="Max results (default: 10)")
+    retrieve_parser.add_argument(
+        "--top-k", type=int, default=None, help="Max results (default: 10)",
+    )
+
+    # -- filter -------------------------------------------------------------
+    filter_parser = subparsers.add_parser(
+        "filter", help="Apply policy filtering to external retrieval candidates"
+    )
+    filter_parser.add_argument("--connector-id", required=True, help="Connector ID")
+    filter_parser.add_argument("--principal-id", required=True, help="Requesting principal ID")
+    filter_parser.add_argument(
+        "--candidates", default=None,
+        help="Inline JSON array of candidate objects",
+    )
+    filter_parser.add_argument(
+        "--candidates-file", default=None,
+        help="Path to JSON file with candidate array",
+    )
+    filter_parser.add_argument(
+        "--include-trace", action="store_true",
+        help="Include full policy trace in response",
+    )
+
+    # -- ask ----------------------------------------------------------------
+    ask_parser = subparsers.add_parser("ask", help="Get a grounded answer from allowed chunks")
+    ask_parser.add_argument("query", help="Natural language question")
+    ask_parser.add_argument("--connector-id", required=True, help="Connector ID to query")
+    ask_parser.add_argument("--principal-id", required=True, help="Requesting principal ID")
+    ask_parser.add_argument(
+        "--top-k", type=int, default=None,
+        help="Max context chunks (default: 5)",
+    )
 
     # -- connectors ---------------------------------------------------------
     conn_parser = subparsers.add_parser("connectors", help="Connector management")
@@ -516,6 +623,22 @@ def _build_parser() -> argparse.ArgumentParser:
     audit_list.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
     audit_list.add_argument("--per-page", type=int, default=20, help="Items per page (default: 20)")
 
+    # -- query (interactive REPL) -------------------------------------------
+    query_parser = subparsers.add_parser(
+        "query", help="Interactive REPL for testing retrieval queries"
+    )
+    query_parser.add_argument("--email", default=None, help="Account email (or use stored creds)")
+    query_parser.add_argument("--password", default=None, help="Account password")
+    query_parser.add_argument(
+        "--base-url", default=None,
+        help=f"API base URL (default: {_DEFAULT_BASE_URL})",
+    )
+    query_parser.add_argument("--connector-id", default=None, help="Pre-select connector ID")
+    query_parser.add_argument("--principal-id", default=None, help="Pre-select principal ID")
+    query_parser.add_argument("--debug", action="store_true", help="Show request/response details")
+    query_parser.add_argument("--json", action="store_true", help="Show raw JSON responses")
+    query_parser.add_argument("--top-k", type=int, default=20, help="Max results (default: 20)")
+
     return parser
 
 
@@ -528,6 +651,9 @@ _DISPATCH: dict[str, Any] = {
     "ingest": _cmd_ingest,
     "ingest-batch": _cmd_ingest_batch,
     "retrieve": _cmd_retrieve,
+    "filter": _cmd_filter,
+    "ask": _cmd_ask,
+    "query": _cmd_query,
 }
 
 _SUB_DISPATCH: dict[str, dict[str, Any]] = {
