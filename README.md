@@ -1,6 +1,8 @@
 # Gateco Python SDK
 
-Official Python client for the [Gateco](https://gateco.dev) API -- permission-aware retrieval for AI systems.
+Official Python client for the [Gateco](https://gateco.ai) API -- permission-aware retrieval for AI systems.
+
+[![GitHub](https://img.shields.io/badge/GitHub-gateco--sdk--python-blue)](https://github.com/fortisil/gateco-sdk-python)
 
 ## Installation
 
@@ -17,7 +19,7 @@ import asyncio
 from gateco_sdk import AsyncGatecoClient
 
 async def main():
-    async with AsyncGatecoClient("https://api.gateco.dev") as client:
+    async with AsyncGatecoClient("https://api.gateco.ai") as client:
         # Authenticate
         await client.login("user@example.com", "password")
 
@@ -52,7 +54,7 @@ asyncio.run(main())
 ```python
 from gateco_sdk import GatecoClient
 
-with GatecoClient("https://api.gateco.dev") as client:
+with GatecoClient("https://api.gateco.ai") as client:
     client.login("user@example.com", "password")
 
     page = client.connectors.list()
@@ -65,7 +67,7 @@ with GatecoClient("https://api.gateco.dev") as client:
 ```python
 from gateco_sdk import AsyncGatecoClient
 
-client = AsyncGatecoClient("https://api.gateco.dev", api_key="sk-your-key")
+client = AsyncGatecoClient("https://api.gateco.ai", api_key="sk-your-key")
 ```
 
 ## Resources
@@ -73,9 +75,20 @@ client = AsyncGatecoClient("https://api.gateco.dev", api_key="sk-your-key")
 | Namespace | Description |
 |-----------|-------------|
 | `client.auth` | Login, signup, token refresh, logout |
-| `client.connectors` | Connector CRUD, test, bind, config, coverage |
+| `client.connectors` | Connector CRUD, test, bind, config, coverage, classification suggestions |
 | `client.ingest` | Single-document and batch ingestion |
-| `client.retrievals` | Permission-gated retrieval execution and history |
+| `client.retrievals` | Permission-gated retrieval execution, filter, and history |
+| `client.answers` | Grounded answer synthesis with citations |
+| `client.policies` | Policy CRUD, activate, archive |
+| `client.identity_providers` | Identity provider CRUD and sync |
+| `client.principals` | Principal listing and detail |
+| `client.data_catalog` | Gated resource listing and metadata updates |
+| `client.pipelines` | Pipeline CRUD and run management |
+| `client.billing` | Plans, usage, invoices, subscription, checkout |
+| `client.audit` | Audit log listing and CSV export |
+| `client.simulator` | Access simulation dry-runs |
+| `client.dashboard` | Dashboard statistics |
+| `client.retroactive` | Retroactive vector registration |
 
 ## Pagination
 

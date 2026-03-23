@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import functools
 from typing import Any
 
 from gateco_sdk._auth import TokenManager
 from gateco_sdk._transport import Transport
 from gateco_sdk.errors import AuthenticationError
+from gateco_sdk.resources.answers import AnswersResource
 from gateco_sdk.resources.audit import AuditResource
 from gateco_sdk.resources.auth import AuthResource
 from gateco_sdk.resources.billing import BillingResource
@@ -38,7 +38,7 @@ class AsyncGatecoClient:
 
     Usage::
 
-        async with AsyncGatecoClient("https://api.gateco.dev") as client:
+        async with AsyncGatecoClient("https://api.gateco.ai") as client:
             await client.login("user@example.com", "secret")
             connectors = await client.connectors.list()
     """
@@ -48,6 +48,8 @@ class AsyncGatecoClient:
         base_url: str = "http://localhost:8000",
         *,
         api_key: str | None = None,
+        access_token: str | None = None,
+        refresh_token: str | None = None,
         timeout: float = 30.0,
         max_retries: int = 2,
         retry_backoff_factor: float = 0.5,
@@ -59,8 +61,11 @@ class AsyncGatecoClient:
             retry_backoff_factor=retry_backoff_factor,
         )
         self._token_manager = TokenManager(api_key=api_key)
+        if access_token:
+            self._token_manager.set_tokens(access_token, refresh_token)
 
         # Lazy resource namespaces
+        self._answers: AnswersResource | None = None
         self._auth: AuthResource | None = None
         self._connectors: ConnectorsResource | None = None
         self._ingest: IngestionResource | None = None
@@ -79,6 +84,13 @@ class AsyncGatecoClient:
     # ------------------------------------------------------------------
     # Resource namespaces (lazy)
     # ------------------------------------------------------------------
+
+    @property
+    def answers(self) -> AnswersResource:
+        """Grounded answer synthesis."""
+        if self._answers is None:
+            self._answers = AnswersResource(self)
+        return self._answers
 
     @property
     def auth(self) -> AuthResource:
@@ -237,6 +249,35 @@ class AsyncGatecoClient:
                 method, path, json=json, params=params, headers=headers
             )
 
+    async def _upload(
+        self,
+        method: str,
+        path: str,
+        *,
+        files: dict[str, Any] | list[tuple[str, Any]] | None = None,
+        data: dict[str, Any] | None = None,
+        authenticate: bool = True,
+    ) -> dict[str, Any] | None:
+        """Send a multipart/form-data upload request with auth."""
+        headers: dict[str, str] = {}
+        if authenticate:
+            if self._token_manager.needs_refresh():
+                await self._do_refresh()
+            headers = self._token_manager.get_auth_headers()
+
+        try:
+            return await self._transport.upload(
+                method, path, files=files, data=data, headers=headers
+            )
+        except AuthenticationError:
+            if not authenticate or not self._token_manager.refresh_token:
+                raise
+            await self._do_refresh()
+            headers = self._token_manager.get_auth_headers()
+            return await self._transport.upload(
+                method, path, files=files, data=data, headers=headers
+            )
+
     async def _do_refresh(self) -> None:
         """Perform a token refresh under a lock to prevent concurrent refreshes."""
         async with self._token_manager.lock:
@@ -295,7 +336,7 @@ class GatecoClient:
 
     Usage::
 
-        with GatecoClient("https://api.gateco.dev") as client:
+        with GatecoClient("https://api.gateco.ai") as client:
             client.login("user@example.com", "secret")
             page = client.connectors.list()
     """
@@ -345,6 +386,10 @@ class GatecoClient:
     # ------------------------------------------------------------------
     # Resource namespaces (sync wrappers)
     # ------------------------------------------------------------------
+
+    @property
+    def answers(self) -> _SyncAnswersProxy:
+        return _SyncAnswersProxy(self._async_client.answers, self._run)
 
     @property
     def auth(self) -> _SyncAuthProxy:
@@ -435,6 +480,11 @@ class _SyncProxy:
         self._run = runner
 
 
+class _SyncAnswersProxy(_SyncProxy):
+    def execute(self, query: str, **kwargs: Any) -> Any:
+        return self._run(self._async.execute(query, **kwargs))
+
+
 class _SyncAuthProxy(_SyncProxy):
     def login(self, email: str, password: str) -> TokenResponse:
         return self._run(self._async.login(email, password))
@@ -515,6 +565,22 @@ class _SyncIngestionProxy(_SyncProxy):
     ) -> Any:
         return self._run(self._async.batch(connector_id, records, **kwargs))
 
+    def file(
+        self,
+        connector_id: str,
+        file_path: str,
+        **kwargs: Any,
+    ) -> Any:
+        return self._run(self._async.file(connector_id, file_path, **kwargs))
+
+    def files(
+        self,
+        connector_id: str,
+        file_paths: list[str],
+        **kwargs: Any,
+    ) -> Any:
+        return self._run(self._async.files(connector_id, file_paths, **kwargs))
+
 
 class _SyncRetrievalsProxy(_SyncProxy):
     def execute(self, query_vector: list[float] | None = None, **kwargs: Any) -> Any:
@@ -593,6 +659,9 @@ class _SyncDataCatalogProxy(_SyncProxy):
 
     def update(self, resource_id: str, **kwargs: Any) -> Any:
         return self._run(self._async.update(resource_id, **kwargs))
+
+    def update_metadata(self, resource_id: str, **kwargs: Any) -> Any:
+        return self._run(self._async.update_metadata(resource_id, **kwargs))
 
 
 class _SyncPipelinesProxy(_SyncProxy):

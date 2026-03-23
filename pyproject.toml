@@ -20,6 +20,12 @@ dev = [
     "respx>=0.21",
 ]
 
+[project.urls]
+Homepage = "https://gateco.ai"
+Documentation = "https://gateco.ai/docs"
+Repository = "https://github.com/fortisil/gateco-sdk-python"
+"Bug Tracker" = "https://github.com/fortisil/gateco-sdk-python/issues"
+
 [project.scripts]
 gateco = "gateco_sdk.cli:main"
 

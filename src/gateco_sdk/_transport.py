@@ -23,7 +23,7 @@ class Transport:
     """Async HTTP transport that wraps :class:`httpx.AsyncClient`.
 
     Args:
-        base_url: Root URL of the Gateco API (e.g. ``https://api.gateco.dev``).
+        base_url: Root URL of the Gateco API (e.g. ``https://api.gateco.ai``).
         timeout: Request timeout in seconds.
         max_retries: Maximum number of automatic retries for 429 / 5xx responses.
         retry_backoff_factor: Multiplier for exponential back-off between retries.
@@ -48,7 +48,7 @@ class Transport:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 timeout=httpx.Timeout(self.timeout),
-                headers={"Content-Type": "application/json", "Accept": "application/json"},
+                headers={"Accept": "application/json"},
             )
         return self._client
 
@@ -99,7 +99,10 @@ class Transport:
                     path,
                     json=json,
                     params=self._clean_params(params),
-                    headers=headers or {},
+                    headers={
+                        **({"Content-Type": "application/json"} if json is not None else {}),
+                        **(headers or {}),
+                    },
                 )
             except httpx.HTTPError as exc:
                 raise GatecoError(
@@ -139,6 +142,76 @@ class Transport:
             raise last_exc
 
         # Should be unreachable, but satisfy the type checker.
+        assert last_exc is not None
+        raise last_exc
+
+    async def upload(
+        self,
+        method: str,
+        path: str,
+        *,
+        files: dict[str, Any] | list[tuple[str, Any]] | None = None,
+        data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
+        """Send a multipart/form-data upload request.
+
+        Unlike :meth:`request`, this sends files instead of JSON.
+        Does not set Content-Type (httpx sets it automatically with boundary).
+        """
+        client = await self._get_client()
+        last_exc: GatecoError | None = None
+
+        # Clean None values from data
+        clean_data = {k: v for k, v in (data or {}).items() if v is not None}
+
+        for attempt in range(1 + self.max_retries):
+            try:
+                # Do NOT set Content-Type here — httpx must set it
+                # automatically with the correct multipart boundary.
+                response = await client.request(
+                    method,
+                    path,
+                    files=files,
+                    data=clean_data,
+                    headers={
+                        **(headers or {}),
+                        "Accept": "application/json",
+                    },
+                )
+            except httpx.HTTPError as exc:
+                raise GatecoError(
+                    f"HTTP transport error: {exc}",
+                    code="TRANSPORT_ERROR",
+                    status_code=0,
+                ) from exc
+
+            if response.status_code == 204:
+                return None
+            if 200 <= response.status_code < 300:
+                return response.json()
+
+            retry_after = self._parse_retry_after(response)
+            try:
+                body = response.json()
+            except Exception:
+                body = None
+
+            last_exc = error_from_response(
+                response.status_code, body, retry_after=retry_after
+            )
+
+            is_last = attempt >= self.max_retries
+            if isinstance(last_exc, RateLimitError) and not is_last:
+                wait = retry_after if retry_after is not None else self._backoff(attempt)
+                await asyncio.sleep(wait)
+                continue
+            if 500 <= response.status_code < 600 and not is_last:
+                await asyncio.sleep(self._backoff(attempt))
+                continue
+
+            raise last_exc
+
         assert last_exc is not None
         raise last_exc
 
