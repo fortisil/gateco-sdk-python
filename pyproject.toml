@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "gateco"
 version = "0.1.0"
 description = "Official Python SDK for the Gateco API"
+authors = [{name = "Rami Refaeli", email = "rami@gateco.ai"}]
+license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
