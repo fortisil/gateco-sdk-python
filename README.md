@@ -70,6 +70,66 @@ from gateco_sdk import AsyncGatecoClient
 client = AsyncGatecoClient("https://api.gateco.ai", api_key="sk-your-key")
 ```
 
+## MCP Server (Model Context Protocol)
+
+The SDK includes an optional MCP server that lets AI agents (Claude Desktop, Cursor, etc.) perform permission-aware retrieval directly.
+
+### Installation
+
+```bash
+pip install gateco[mcp]
+```
+
+### Usage
+
+```bash
+# Via CLI subcommand
+gateco mcp serve
+
+# Via direct entry point (for MCP host configs)
+gateco-mcp
+```
+
+### Claude Desktop Configuration
+
+```json
+{
+  "mcpServers": {
+    "gateco": {
+      "command": "gateco-mcp",
+      "env": {
+        "GATECO_API_KEY": "gk_...",
+        "GATECO_BASE_URL": "https://api.gateco.ai"
+      }
+    }
+  }
+}
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `gateco_retrieve` | Permission-aware vector retrieval |
+| `gateco_ask` | Grounded answer synthesis (Pro+) |
+| `gateco_check_access` | Dry-run access simulation (Pro+) |
+| `gateco_list_connectors` | List connectors with readiness levels |
+| `gateco_list_principals` | List identity principals |
+
+All tools return markdown-formatted text. Denied content is never exposed -- only denial reasons and counts are shown. The server reuses the SDK credential resolution chain: `GATECO_API_KEY` env var, `GATECO_BASE_URL` env var, or `~/.gateco/credentials.json` (set by `gateco login`).
+
+### Programmatic Usage
+
+```python
+from gateco_sdk.mcp import create_server, run_stdio
+
+# Create a configured server instance
+server = create_server()
+
+# Or start directly on stdio
+run_stdio()
+```
+
 ## Resources
 
 | Namespace | Description |

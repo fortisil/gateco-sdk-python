@@ -476,6 +476,18 @@ async def _cmd_query(args: argparse.Namespace) -> None:
     await repl.run()
 
 
+# -- mcp serve --------------------------------------------------------------
+
+
+async def _cmd_mcp_serve(args: argparse.Namespace) -> None:
+    """Start the MCP server on stdio transport."""
+    try:
+        from gateco_sdk.mcp import run_stdio
+    except ImportError:
+        _error("MCP extras not installed. Run: pip install gateco[mcp]")
+    run_stdio()
+
+
 # -- audit ------------------------------------------------------------------
 
 
@@ -623,6 +635,11 @@ def _build_parser() -> argparse.ArgumentParser:
     audit_list.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
     audit_list.add_argument("--per-page", type=int, default=20, help="Items per page (default: 20)")
 
+    # -- mcp ----------------------------------------------------------------
+    mcp_parser = subparsers.add_parser("mcp", help="MCP server operations")
+    mcp_sub = mcp_parser.add_subparsers(dest="subcommand")
+    mcp_sub.add_parser("serve", help="Start the MCP server on stdio transport")
+
     # -- query (interactive REPL) -------------------------------------------
     query_parser = subparsers.add_parser(
         "query", help="Interactive REPL for testing retrieval queries"
@@ -668,6 +685,9 @@ _SUB_DISPATCH: dict[str, dict[str, Any]] = {
     },
     "audit": {
         "list": _cmd_audit_list,
+    },
+    "mcp": {
+        "serve": _cmd_mcp_serve,
     },
 }
 
