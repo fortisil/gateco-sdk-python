@@ -95,6 +95,10 @@ class ExecuteRetrievalRequest(BaseModel):
     top_k: int | None = None
     filters: dict[str, Any] | None = None
     include_unresolved: bool | None = None
+    search_mode: str | None = None
+    alpha: float | None = None
+    pattern_type: str | None = None
+    case_sensitive: bool | None = None
 
 
 class SecuredRetrieval(BaseModel):
@@ -127,3 +131,9 @@ class SecuredRetrieval(BaseModel):
     latency_ms: float | None = None
     connector_latency_ms: float | None = None
     metadata: dict[str, Any] = {}
+    search_mode: str | None = None
+    keyword_latency_ms: float | None = None
+    vector_latency_ms: float | None = None
+    pattern_type: str | None = None
+    match_count: int | None = None
+    sort_order: str | None = None

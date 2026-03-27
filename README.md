@@ -33,7 +33,7 @@ async def main():
         )
         print(f"Ingested: {result.resource_id} ({result.chunk_count} chunks)")
 
-        # Execute a permission-gated retrieval
+        # Execute a permission-gated retrieval (vector search, default)
         retrieval = await client.retrievals.execute(
             query="What was the revenue growth?",
             principal_id="user-456",
@@ -45,6 +45,34 @@ async def main():
                 print(f"  [GRANTED] {outcome.resource_id} (score={outcome.score})")
             else:
                 print(f"  [DENIED]  {outcome.resource_id}")
+
+        # Keyword search (ranked full-text search)
+        result = await client.retrievals.execute(
+            query="quarterly revenue report",
+            principal_id="user-456",
+            connector_id="conn-abc",
+            search_mode="keyword",
+            top_k=10,
+        )
+
+        # Hybrid search (vector + keyword fused)
+        result = await client.retrievals.execute(
+            query="quarterly revenue report",
+            principal_id="user-456",
+            connector_id="conn-abc",
+            search_mode="hybrid",
+            alpha=0.5,  # 1.0=all-vector, 0.0=all-keyword
+            top_k=10,
+        )
+
+        # Grep search (exact pattern matching)
+        result = await client.retrievals.execute(
+            query="ERR-4021",
+            principal_id="user-456",
+            connector_id="conn-abc",
+            search_mode="grep",
+        )
+        print(result.match_count, result.sort_order)  # total matches, "natural"
 
 asyncio.run(main())
 ```
@@ -110,8 +138,8 @@ gateco-mcp
 
 | Tool | Description |
 |------|-------------|
-| `gateco_retrieve` | Permission-aware vector retrieval |
-| `gateco_ask` | Grounded answer synthesis (Pro+) |
+| `gateco_retrieve` | Permission-aware retrieval (vector/keyword/hybrid/grep) |
+| `gateco_ask` | Grounded answer synthesis with search modes (Pro+) |
 | `gateco_check_access` | Dry-run access simulation (Pro+) |
 | `gateco_list_connectors` | List connectors with readiness levels |
 | `gateco_list_principals` | List identity principals |

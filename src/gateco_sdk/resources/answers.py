@@ -27,6 +27,8 @@ class AnswersResource:
         connector_id: str,
         top_k: int | None = None,
         filters: dict[str, Any] | None = None,
+        search_mode: str | None = None,
+        alpha: float | None = None,
     ) -> Answer:
         """Execute a grounded answer synthesis.
 
@@ -36,6 +38,8 @@ class AnswersResource:
             connector_id: Connector to search against.
             top_k: Maximum chunks for context (default: 5).
             filters: Optional filter dict for scoping results.
+            search_mode: Search mode for retrieval (vector/keyword/hybrid). Grep excluded.
+            alpha: Hybrid weight 0.0-1.0. Only for hybrid mode.
         """
         body: dict[str, Any] = {
             "query": query,
@@ -46,6 +50,10 @@ class AnswersResource:
             body["top_k"] = top_k
         if filters is not None:
             body["filters"] = filters
+        if search_mode is not None:
+            body["search_mode"] = search_mode
+        if alpha is not None:
+            body["alpha"] = alpha
 
         data = await self._client._request(
             "POST", "/api/answers/execute", json=body

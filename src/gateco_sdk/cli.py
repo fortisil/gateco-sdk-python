@@ -244,24 +244,49 @@ async def _cmd_ingest_batch(args: argparse.Namespace) -> None:
 
 async def _cmd_retrieve(args: argparse.Namespace) -> None:
     """Execute a permission-gated retrieval."""
-    vec_path = Path(args.vector_file)
-    if not vec_path.exists():
-        _error(f"Vector file not found: {vec_path}")
+    search_mode = getattr(args, "search_mode", "vector") or "vector"
 
-    try:
-        query_vector = json.loads(vec_path.read_text(encoding="utf-8"))
-        if not isinstance(query_vector, list):
-            _error("Vector file must contain a JSON array of floats.")
-    except json.JSONDecodeError as exc:
-        _error(f"Invalid JSON in vector file: {exc}")
-
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = {"search_mode": search_mode}
     if args.top_k is not None:
         kwargs["top_k"] = args.top_k
 
+    # Vector file is required only for vector mode (and optional for hybrid)
+    if search_mode == "vector" and not args.query:
+        vec_path = Path(args.vector_file) if args.vector_file else None
+        if not vec_path or not vec_path.exists():
+            _error("--vector-file is required for vector search mode (or use --query)")
+
+        try:
+            query_vector = json.loads(vec_path.read_text(encoding="utf-8"))
+            if not isinstance(query_vector, list):
+                _error("Vector file must contain a JSON array of floats.")
+        except json.JSONDecodeError as exc:
+            _error(f"Invalid JSON in vector file: {exc}")
+        kwargs["query_vector"] = query_vector
+    elif args.vector_file:
+        vec_path = Path(args.vector_file)
+        if vec_path.exists():
+            try:
+                query_vector = json.loads(vec_path.read_text(encoding="utf-8"))
+                if isinstance(query_vector, list):
+                    kwargs["query_vector"] = query_vector
+            except json.JSONDecodeError:
+                pass
+
+    if args.query:
+        kwargs["query"] = args.query
+
+    if search_mode == "hybrid" and getattr(args, "alpha", None) is not None:
+        kwargs["alpha"] = args.alpha
+
+    if search_mode == "grep":
+        if getattr(args, "pattern_type", None):
+            kwargs["pattern_type"] = args.pattern_type
+        if getattr(args, "case_sensitive", False):
+            kwargs["case_sensitive"] = True
+
     async with _get_client() as client:
         result = await client.retrievals.execute(
-            query_vector=query_vector,
             principal_id=args.principal_id,
             connector_id=args.connector_id,
             **kwargs,
@@ -546,12 +571,32 @@ def _build_parser() -> argparse.ArgumentParser:
     # -- retrieve -----------------------------------------------------------
     retrieve_parser = subparsers.add_parser("retrieve", help="Execute a permission-gated retrieval")
     retrieve_parser.add_argument(
-        "--vector-file", required=True, help="JSON file containing query vector"
+        "--vector-file", default=None, help="JSON file containing query vector (required for vector mode)"
     )
     retrieve_parser.add_argument("--principal-id", required=True, help="Requesting principal ID")
     retrieve_parser.add_argument("--connector-id", required=True, help="Connector ID to query")
     retrieve_parser.add_argument(
         "--top-k", type=int, default=None, help="Max results (default: 10)",
+    )
+    retrieve_parser.add_argument(
+        "--query", default=None, help="Text query (used for keyword/hybrid/grep or server-side embedding)",
+    )
+    retrieve_parser.add_argument(
+        "--search-mode", default="vector",
+        choices=["vector", "keyword", "hybrid", "grep"],
+        help="Search mode (default: vector)",
+    )
+    retrieve_parser.add_argument(
+        "--alpha", type=float, default=None,
+        help="Hybrid weight: 1.0=all-vector, 0.0=all-keyword (default: 0.5)",
+    )
+    retrieve_parser.add_argument(
+        "--pattern-type", default=None, choices=["substring", "regex"],
+        help="Grep pattern type (default: substring)",
+    )
+    retrieve_parser.add_argument(
+        "--case-sensitive", action="store_true",
+        help="Case-sensitive grep matching",
     )
 
     # -- filter -------------------------------------------------------------

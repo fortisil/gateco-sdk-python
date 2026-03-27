@@ -74,6 +74,7 @@ class TestHandleRetrieve:
             principal_id="user-1",
             connector_id="conn-1",
             top_k=5,
+            search_mode="vector",
         )
 
     @pytest.mark.asyncio
@@ -172,6 +173,7 @@ class TestHandleAsk:
 
         client.answers.execute.assert_called_once_with(
             "q", principal_id="user-1", connector_id="conn-1", top_k=15,
+            search_mode="vector",
         )
 
 

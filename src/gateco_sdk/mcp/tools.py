@@ -7,6 +7,8 @@ descriptive error strings (the MCP server layer marks them ``is_error=True``).
 
 from __future__ import annotations
 
+from typing import Any
+
 from gateco_sdk.errors import (
     AuthenticationError,
     AuthorizationError,
@@ -54,18 +56,31 @@ async def handle_retrieve(
     query: str,
     principal_id: str,
     top_k: int = 10,
+    search_mode: str = "vector",
+    alpha: float | None = None,
+    pattern_type: str | None = None,
+    case_sensitive: bool | None = None,
 ) -> str:
-    """Permission-aware vector retrieval."""
+    """Permission-aware retrieval with configurable search mode."""
     from gateco_sdk.cli import _get_client
 
     try:
+        kwargs: dict[str, Any] = {
+            "query": query,
+            "principal_id": principal_id,
+            "connector_id": connector_id,
+            "top_k": top_k,
+            "search_mode": search_mode,
+        }
+        if alpha is not None:
+            kwargs["alpha"] = alpha
+        if pattern_type is not None:
+            kwargs["pattern_type"] = pattern_type
+        if case_sensitive is not None:
+            kwargs["case_sensitive"] = case_sensitive
+
         async with _get_client() as client:
-            result = await client.retrievals.execute(
-                query=query,
-                principal_id=principal_id,
-                connector_id=connector_id,
-                top_k=top_k,
-            )
+            result = await client.retrievals.execute(**kwargs)
         return format_retrieval(result)
     except GatecoError as exc:
         raise _ToolError(_handle_error(exc)) from exc
@@ -76,17 +91,27 @@ async def handle_ask(
     query: str,
     principal_id: str,
     top_k: int = 15,
+    search_mode: str = "vector",
+    alpha: float | None = None,
 ) -> str:
     """Grounded answer synthesis (Pro+)."""
     from gateco_sdk.cli import _get_client
 
     try:
+        kwargs: dict[str, Any] = {
+            "principal_id": principal_id,
+            "connector_id": connector_id,
+            "top_k": top_k,
+        }
+        if search_mode != "grep":
+            kwargs["search_mode"] = search_mode
+        if alpha is not None:
+            kwargs["alpha"] = alpha
+
         async with _get_client() as client:
             result = await client.answers.execute(
                 query,
-                principal_id=principal_id,
-                connector_id=connector_id,
-                top_k=top_k,
+                **kwargs,
             )
         return format_answer(result)
     except GatecoError as exc:

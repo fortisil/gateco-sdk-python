@@ -46,11 +46,29 @@ def format_retrieval(result: SecuredRetrieval) -> str:
     lines = [
         "## Retrieval Results",
         "",
+    ]
+
+    # Add search mode to header if present
+    search_mode = getattr(result, "search_mode", None)
+    if search_mode and search_mode != "vector":
+        mode_label = {"keyword": "Keyword (FTS)", "hybrid": "Hybrid", "grep": "Grep"}.get(
+            search_mode, search_mode
+        )
+        lines.append(f"**Search Mode:** {mode_label}")
+
+    lines.append(
         f"**Outcome:** {outcome} | "
         f"**Allowed:** {result.allowed_chunks or result.granted_count} | "
         f"**Denied:** {result.denied_chunks or result.denied_count} | "
-        f"**Duration:** {duration}",
-    ]
+        f"**Duration:** {duration}"
+    )
+
+    if search_mode == "grep":
+        match_count = getattr(result, "match_count", None)
+        pt = getattr(result, "pattern_type", "substring")
+        so = getattr(result, "sort_order", "natural")
+        if match_count is not None:
+            lines.append(f"**Matches:** {match_count} | **Pattern:** {pt} | **Order:** {so}")
 
     # Prefer results (FilterResult) over outcomes (RetrievalOutcome)
     allowed_items = []

@@ -30,6 +30,10 @@ class RetrievalsResource:
         top_k: int | None = None,
         filters: dict[str, Any] | None = None,
         include_unresolved: bool | None = None,
+        search_mode: str | None = None,
+        alpha: float | None = None,
+        pattern_type: str | None = None,
+        case_sensitive: bool | None = None,
     ) -> SecuredRetrieval:
         """Execute a permission-gated retrieval.
 
@@ -41,6 +45,10 @@ class RetrievalsResource:
             top_k: Maximum number of results to return.
             filters: Optional filter dict for scoping results.
             include_unresolved: Whether to include unresolved results.
+            search_mode: Search mode — "vector", "keyword", "hybrid", or "grep".
+            alpha: Hybrid weight (1.0=all-vector, 0.0=all-keyword). Hybrid only.
+            pattern_type: Grep pattern type — "substring" or "regex". Grep only.
+            case_sensitive: Case-sensitive grep matching. Grep only.
         """
         body: dict[str, Any] = {
             "principal_id": principal_id,
@@ -56,6 +64,14 @@ class RetrievalsResource:
             body["filters"] = filters
         if include_unresolved is not None:
             body["include_unresolved"] = include_unresolved
+        if search_mode is not None:
+            body["search_mode"] = search_mode
+        if alpha is not None:
+            body["alpha"] = alpha
+        if pattern_type is not None:
+            body["pattern_type"] = pattern_type
+        if case_sensitive is not None:
+            body["case_sensitive"] = case_sensitive
 
         data = await self._client._request(
             "POST", "/api/retrievals/execute", json=body

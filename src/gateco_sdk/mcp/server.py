@@ -24,21 +24,41 @@ def create_server() -> FastMCP:
         query: str,
         principal_id: str,
         top_k: int = 10,
+        search_mode: str = "vector",
+        alpha: float | None = None,
+        pattern_type: str | None = None,
+        case_sensitive: bool | None = None,
     ) -> str:
-        """Permission-aware vector retrieval through Gateco.
+        """Permission-aware retrieval through Gateco.
 
         Searches a connector (vector DB) for chunks matching the query,
         then applies policy filtering based on the principal's identity.
         Only allowed chunks are returned; denied content is never exposed.
 
+        Supports four search modes:
+        - vector: Semantic similarity (ANN) — default
+        - keyword: Ranked full-text search (BM25/FTS)
+        - hybrid: Combined vector + keyword with configurable alpha weight
+        - grep: Deterministic exact-match (substring or regex)
+
         Args:
             connector_id: Connector (vector DB) to search.
-            query: Natural language search query.
+            query: Search query text.
             principal_id: Identity performing the request.
             top_k: Max results (default: 10).
+            search_mode: Search mode (default: "vector").
+            alpha: Hybrid weight 0.0-1.0 (1.0=all-vector, 0.0=all-keyword). Hybrid only.
+            pattern_type: "substring" or "regex". Grep only.
+            case_sensitive: Case-sensitive matching. Grep only.
         """
         try:
-            return await handle_retrieve(connector_id, query, principal_id, top_k)
+            return await handle_retrieve(
+                connector_id, query, principal_id, top_k,
+                search_mode=search_mode,
+                alpha=alpha,
+                pattern_type=pattern_type,
+                case_sensitive=case_sensitive,
+            )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -48,6 +68,8 @@ def create_server() -> FastMCP:
         query: str,
         principal_id: str,
         top_k: int = 15,
+        search_mode: str = "vector",
+        alpha: float | None = None,
     ) -> str:
         """Grounded answer synthesis through Gateco (Pro+ plan required).
 
@@ -55,14 +77,22 @@ def create_server() -> FastMCP:
         answer with citations. Denied chunks are never included in the
         LLM context.
 
+        Supports vector, keyword, and hybrid search modes (not grep).
+
         Args:
             connector_id: Connector to search.
             query: Natural language question.
             principal_id: Identity performing the request.
             top_k: Max context chunks (default: 15).
+            search_mode: Search mode — "vector", "keyword", or "hybrid" (not grep).
+            alpha: Hybrid weight 0.0-1.0. Hybrid only.
         """
         try:
-            return await handle_ask(connector_id, query, principal_id, top_k)
+            return await handle_ask(
+                connector_id, query, principal_id, top_k,
+                search_mode=search_mode,
+                alpha=alpha,
+            )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
 
