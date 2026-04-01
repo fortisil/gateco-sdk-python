@@ -21,6 +21,7 @@ from gateco_sdk.errors import (
 from gateco_sdk.mcp.formatters import (
     format_answer,
     format_connectors,
+    format_principal,
     format_principals,
     format_retrieval,
     format_simulation,
@@ -54,32 +55,46 @@ def _handle_error(exc: GatecoError) -> str:
 async def handle_retrieve(
     connector_id: str,
     query: str,
-    principal_id: str,
+    principal_id: str | None = None,
     top_k: int = 10,
     search_mode: str = "vector",
     alpha: float | None = None,
     pattern_type: str | None = None,
     case_sensitive: bool | None = None,
+    email: str | None = None,
 ) -> str:
-    """Permission-aware retrieval with configurable search mode."""
+    """Permission-aware retrieval with configurable search mode.
+
+    Either ``principal_id`` or ``email`` must be supplied.  When only
+    ``email`` is provided the principal is resolved before executing the
+    retrieval.
+    """
     from gateco_sdk.cli import _get_client
 
-    try:
-        kwargs: dict[str, Any] = {
-            "query": query,
-            "principal_id": principal_id,
-            "connector_id": connector_id,
-            "top_k": top_k,
-            "search_mode": search_mode,
-        }
-        if alpha is not None:
-            kwargs["alpha"] = alpha
-        if pattern_type is not None:
-            kwargs["pattern_type"] = pattern_type
-        if case_sensitive is not None:
-            kwargs["case_sensitive"] = case_sensitive
+    if not principal_id and not email:
+        raise _ToolError("Either 'principal_id' or 'email' must be provided.")
 
+    try:
         async with _get_client() as client:
+            resolved_id = principal_id
+            if not resolved_id:
+                principal = await client.principals.resolve(email=email)
+                resolved_id = principal.id
+
+            kwargs: dict[str, Any] = {
+                "query": query,
+                "principal_id": resolved_id,
+                "connector_id": connector_id,
+                "top_k": top_k,
+                "search_mode": search_mode,
+            }
+            if alpha is not None:
+                kwargs["alpha"] = alpha
+            if pattern_type is not None:
+                kwargs["pattern_type"] = pattern_type
+            if case_sensitive is not None:
+                kwargs["case_sensitive"] = case_sensitive
+
             result = await client.retrievals.execute(**kwargs)
         return format_retrieval(result)
     except GatecoError as exc:
@@ -89,30 +104,41 @@ async def handle_retrieve(
 async def handle_ask(
     connector_id: str,
     query: str,
-    principal_id: str,
+    principal_id: str | None = None,
     top_k: int = 15,
     search_mode: str = "vector",
     alpha: float | None = None,
+    email: str | None = None,
 ) -> str:
-    """Grounded answer synthesis (Pro+)."""
+    """Grounded answer synthesis (Pro+).
+
+    Either ``principal_id`` or ``email`` must be supplied.  When only
+    ``email`` is provided the principal is resolved before executing the
+    answer synthesis.
+    """
     from gateco_sdk.cli import _get_client
 
-    try:
-        kwargs: dict[str, Any] = {
-            "principal_id": principal_id,
-            "connector_id": connector_id,
-            "top_k": top_k,
-        }
-        if search_mode != "grep":
-            kwargs["search_mode"] = search_mode
-        if alpha is not None:
-            kwargs["alpha"] = alpha
+    if not principal_id and not email:
+        raise _ToolError("Either 'principal_id' or 'email' must be provided.")
 
+    try:
         async with _get_client() as client:
-            result = await client.answers.execute(
-                query,
-                **kwargs,
-            )
+            resolved_id = principal_id
+            if not resolved_id:
+                principal = await client.principals.resolve(email=email)
+                resolved_id = principal.id
+
+            kwargs: dict[str, Any] = {
+                "principal_id": resolved_id,
+                "connector_id": connector_id,
+                "top_k": top_k,
+            }
+            if search_mode != "grep":
+                kwargs["search_mode"] = search_mode
+            if alpha is not None:
+                kwargs["alpha"] = alpha
+
+            result = await client.answers.execute(query, **kwargs)
         return format_answer(result)
     except GatecoError as exc:
         raise _ToolError(_handle_error(exc)) from exc
@@ -164,6 +190,31 @@ async def handle_list_principals(
         async with _get_client() as client:
             result = await client.principals.list(page=page, per_page=per_page)
         return format_principals(result)
+    except GatecoError as exc:
+        raise _ToolError(_handle_error(exc)) from exc
+
+
+async def handle_resolve_principal(
+    email: str | None,
+    provider_subject: str | None,
+    identity_provider_id: str | None,
+) -> str:
+    """Resolve a principal by email or provider subject ID."""
+    from gateco_sdk.cli import _get_client
+
+    if not email and not provider_subject:
+        raise _ToolError(
+            "At least one of 'email' or 'provider_subject' must be provided."
+        )
+
+    try:
+        async with _get_client() as client:
+            principal = await client.principals.resolve(
+                email=email,
+                provider_subject=provider_subject,
+                identity_provider_id=identity_provider_id,
+            )
+        return format_principal(principal)
     except GatecoError as exc:
         raise _ToolError(_handle_error(exc)) from exc
 

@@ -143,6 +143,7 @@ gateco-mcp
 | `gateco_check_access` | Dry-run access simulation (Pro+) |
 | `gateco_list_connectors` | List connectors with readiness levels |
 | `gateco_list_principals` | List identity principals |
+| `gateco_resolve_principal` | Resolve a principal by email or provider subject |
 
 All tools return markdown-formatted text. Denied content is never exposed -- only denial reasons and counts are shown. The server reuses the SDK credential resolution chain: `GATECO_API_KEY` env var, `GATECO_BASE_URL` env var, or `~/.gateco/credentials.json` (set by `gateco login`).
 
@@ -167,9 +168,9 @@ run_stdio()
 | `client.ingest` | Single-document and batch ingestion |
 | `client.retrievals` | Permission-gated retrieval execution, filter, and history |
 | `client.answers` | Grounded answer synthesis with citations |
-| `client.policies` | Policy CRUD, activate, archive |
+| `client.policies` | Policy CRUD, activate, archive, and templates |
 | `client.identity_providers` | Identity provider CRUD and sync |
-| `client.principals` | Principal listing and detail |
+| `client.principals` | Principal listing, detail, and resolve |
 | `client.data_catalog` | Gated resource listing and metadata updates |
 | `client.pipelines` | Pipeline CRUD and run management |
 | `client.billing` | Plans, usage, invoices, subscription, checkout |
@@ -177,6 +178,26 @@ run_stdio()
 | `client.simulator` | Access simulation dry-runs |
 | `client.dashboard` | Dashboard statistics |
 | `client.retroactive` | Retroactive vector registration |
+
+## Principal Resolution
+
+Resolve principals by email or provider subject without knowing their ID:
+
+```python
+# Resolve by email
+principal = await client.principals.resolve(email="alice@company.com")
+
+# Resolve by provider subject (raw IDP-side user ID)
+principal = await client.principals.resolve(provider_subject="okta-user-123")
+
+# Scoped to a specific identity provider
+principal = await client.principals.resolve(
+    email="alice@company.com",
+    identity_provider_id="idp-uuid-here",
+)
+```
+
+Resolution is read-only -- it finds existing active principals but never creates them. Returns 404 if no active principal matches.
 
 ## Pagination
 

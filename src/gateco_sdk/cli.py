@@ -294,6 +294,36 @@ async def _cmd_retrieve(args: argparse.Namespace) -> None:
     _output(result)
 
 
+# -- principals subcommands ------------------------------------------------
+
+
+async def _cmd_principals_list(args: argparse.Namespace) -> None:
+    """List principals."""
+    page_num = args.page if args.page else 1
+    per_page = args.per_page if args.per_page else 20
+    async with _get_client() as client:
+        page = await client.principals.list(page=page_num, per_page=per_page)
+    _output({"items": [p.model_dump(mode="json") for p in page.items], "total": page.total})
+
+
+async def _cmd_principals_resolve(args: argparse.Namespace) -> None:
+    """Resolve a principal by email or provider subject ID."""
+    email: str | None = args.email
+    provider_subject: str | None = args.provider_subject
+    identity_provider_id: str | None = args.identity_provider_id
+
+    if not email and not provider_subject:
+        _error("At least one of --email or --provider-subject must be provided.")
+
+    async with _get_client() as client:
+        principal = await client.principals.resolve(
+            email=email,
+            provider_subject=provider_subject,
+            identity_provider_id=identity_provider_id,
+        )
+    _output(principal)
+
+
 # -- connectors subcommands ------------------------------------------------
 
 
@@ -628,6 +658,27 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Max context chunks (default: 5)",
     )
 
+    # -- principals ---------------------------------------------------------
+    prin_parser = subparsers.add_parser("principals", help="Principal management")
+    prin_sub = prin_parser.add_subparsers(dest="subcommand")
+
+    prin_list = prin_sub.add_parser("list", help="List all principals")
+    prin_list.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
+    prin_list.add_argument("--per-page", type=int, default=20, help="Items per page (default: 20)")
+
+    prin_resolve = prin_sub.add_parser(
+        "resolve", help="Resolve a principal by email or provider subject ID"
+    )
+    prin_resolve.add_argument("--email", default=None, help="Email address of the principal")
+    prin_resolve.add_argument(
+        "--provider-subject", default=None,
+        help="Provider-native subject identifier (e.g. Okta user ID, Google sub claim)",
+    )
+    prin_resolve.add_argument(
+        "--identity-provider-id", default=None,
+        help="UUID of the identity provider to scope the lookup to",
+    )
+
     # -- connectors ---------------------------------------------------------
     conn_parser = subparsers.add_parser("connectors", help="Connector management")
     conn_sub = conn_parser.add_subparsers(dest="subcommand")
@@ -719,6 +770,10 @@ _DISPATCH: dict[str, Any] = {
 }
 
 _SUB_DISPATCH: dict[str, dict[str, Any]] = {
+    "principals": {
+        "list": _cmd_principals_list,
+        "resolve": _cmd_principals_resolve,
+    },
     "connectors": {
         "list": _cmd_connectors_list,
         "test": _cmd_connectors_test,

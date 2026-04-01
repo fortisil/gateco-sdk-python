@@ -649,6 +649,21 @@ class _SyncPrincipalsProxy(_SyncProxy):
     def get(self, principal_id: str) -> Any:
         return self._run(self._async.get(principal_id))
 
+    def resolve(
+        self,
+        *,
+        email: str | None = None,
+        provider_subject: str | None = None,
+        identity_provider_id: str | None = None,
+    ) -> Any:
+        return self._run(
+            self._async.resolve(
+                email=email,
+                provider_subject=provider_subject,
+                identity_provider_id=identity_provider_id,
+            )
+        )
+
 
 class _SyncDataCatalogProxy(_SyncProxy):
     def list(self, page: int = 1, per_page: int = 20, **kwargs: Any) -> Any:

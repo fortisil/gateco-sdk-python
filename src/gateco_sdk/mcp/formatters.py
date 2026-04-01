@@ -231,7 +231,34 @@ def format_connectors(page: Page[Connector]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Principals
+# Principal (single)
+# ---------------------------------------------------------------------------
+
+
+def format_principal(principal: Principal) -> str:
+    """Format a single ``Principal`` as markdown.
+
+    Includes identity summary, group/role membership, and optional attributes.
+    """
+    lines = [
+        f"## Principal: {principal.display_name or principal.id}",
+        f"- **Email:** {principal.email or 'N/A'}",
+        f"- **Status:** {principal.status or 'N/A'}",
+        f"- **Groups:** {', '.join(principal.groups) if principal.groups else 'None'}",
+        f"- **Roles:** {', '.join(principal.roles) if principal.roles else 'None'}",
+        f"- **ID:** `{principal.id}`",
+    ]
+    if principal.provider_subject:
+        lines.append(f"- **Provider Subject:** `{principal.provider_subject}`")
+    if principal.identity_provider_name:
+        lines.append(f"- **Identity Provider:** {principal.identity_provider_name}")
+    if principal.attributes:
+        lines.append(f"- **Attributes:** {principal.attributes}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Principals (page)
 # ---------------------------------------------------------------------------
 
 

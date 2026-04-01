@@ -19,7 +19,7 @@ class TestCreateServer:
         server = create_server()
         # FastMCP stores tools internally; list them
         tools = server._tool_manager._tools
-        assert len(tools) == 5
+        assert len(tools) == 6
 
     def test_tool_names(self):
         from gateco_sdk.mcp.server import create_server
@@ -32,6 +32,7 @@ class TestCreateServer:
             "gateco_check_access",
             "gateco_list_connectors",
             "gateco_list_principals",
+            "gateco_resolve_principal",
         }
         assert tool_names == expected
 

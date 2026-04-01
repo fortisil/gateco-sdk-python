@@ -10,6 +10,7 @@ from gateco_sdk.mcp.tools import (
     handle_check_access,
     handle_list_connectors,
     handle_list_principals,
+    handle_resolve_principal,
     handle_retrieve,
 )
 
@@ -22,7 +23,8 @@ def create_server() -> FastMCP:
     async def gateco_retrieve(
         connector_id: str,
         query: str,
-        principal_id: str,
+        principal_id: str | None = None,
+        email: str | None = None,
         top_k: int = 10,
         search_mode: str = "vector",
         alpha: float | None = None,
@@ -44,7 +46,10 @@ def create_server() -> FastMCP:
         Args:
             connector_id: Connector (vector DB) to search.
             query: Search query text.
-            principal_id: Identity performing the request.
+            principal_id: Identity performing the request (UUID). Mutually
+                exclusive alternative to email.
+            email: Email address of the principal. When provided and
+                principal_id is absent, the principal is resolved first.
             top_k: Max results (default: 10).
             search_mode: Search mode (default: "vector").
             alpha: Hybrid weight 0.0-1.0 (1.0=all-vector, 0.0=all-keyword). Hybrid only.
@@ -58,6 +63,7 @@ def create_server() -> FastMCP:
                 alpha=alpha,
                 pattern_type=pattern_type,
                 case_sensitive=case_sensitive,
+                email=email,
             )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
@@ -66,7 +72,8 @@ def create_server() -> FastMCP:
     async def gateco_ask(
         connector_id: str,
         query: str,
-        principal_id: str,
+        principal_id: str | None = None,
+        email: str | None = None,
         top_k: int = 15,
         search_mode: str = "vector",
         alpha: float | None = None,
@@ -82,7 +89,10 @@ def create_server() -> FastMCP:
         Args:
             connector_id: Connector to search.
             query: Natural language question.
-            principal_id: Identity performing the request.
+            principal_id: Identity performing the request (UUID). Mutually
+                exclusive alternative to email.
+            email: Email address of the principal. When provided and
+                principal_id is absent, the principal is resolved first.
             top_k: Max context chunks (default: 15).
             search_mode: Search mode — "vector", "keyword", or "hybrid" (not grep).
             alpha: Hybrid weight 0.0-1.0. Hybrid only.
@@ -92,6 +102,7 @@ def create_server() -> FastMCP:
                 connector_id, query, principal_id, top_k,
                 search_mode=search_mode,
                 alpha=alpha,
+                email=email,
             )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
@@ -156,6 +167,34 @@ def create_server() -> FastMCP:
         """
         try:
             return await handle_list_principals(page, per_page)
+        except _ToolError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @server.tool()
+    async def gateco_resolve_principal(
+        email: str | None = None,
+        provider_subject: str | None = None,
+        identity_provider_id: str | None = None,
+    ) -> str:
+        """Resolve a principal by email or provider subject ID.
+
+        Looks up a principal in Gateco's identity store using a human-readable
+        identifier (email) or the provider-native subject ID (e.g. an Okta user
+        ID, Google sub claim, or AWS external ID).  Returns principal details
+        including groups, roles, and attributes.
+
+        At least one of email or provider_subject must be provided.
+
+        Args:
+            email: Email address of the principal to resolve.
+            provider_subject: Provider-native subject identifier.
+            identity_provider_id: Optional UUID to scope the lookup to a single
+                identity provider.
+        """
+        try:
+            return await handle_resolve_principal(
+                email, provider_subject, identity_provider_id
+            )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
 

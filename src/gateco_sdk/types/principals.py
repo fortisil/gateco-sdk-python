@@ -23,6 +23,7 @@ class Principal(BaseModel):
     identity_provider_id: str | None = None
     identity_provider_name: str | None = None
     external_id: str | None = None
+    provider_subject: str | None = None
     display_name: str | None = None
     email: str | None = None
     groups: list[str] = []
