@@ -9,6 +9,7 @@ from gateco_sdk._auth import TokenManager
 from gateco_sdk._transport import Transport
 from gateco_sdk.errors import AuthenticationError
 from gateco_sdk.resources.answers import AnswersResource
+from gateco_sdk.resources.api_keys import ApiKeysResource
 from gateco_sdk.resources.audit import AuditResource
 from gateco_sdk.resources.auth import AuthResource
 from gateco_sdk.resources.billing import BillingResource
@@ -17,6 +18,7 @@ from gateco_sdk.resources.dashboard import DashboardResource
 from gateco_sdk.resources.data_catalog import DataCatalogResource
 from gateco_sdk.resources.identity_providers import IdentityProvidersResource
 from gateco_sdk.resources.ingestion import IngestionResource
+from gateco_sdk.resources.onboarding import OnboardingResource
 from gateco_sdk.resources.pipelines import PipelinesResource
 from gateco_sdk.resources.policies import PoliciesResource
 from gateco_sdk.resources.principals import PrincipalsResource
@@ -66,9 +68,11 @@ class AsyncGatecoClient:
 
         # Lazy resource namespaces
         self._answers: AnswersResource | None = None
+        self._api_keys: ApiKeysResource | None = None
         self._auth: AuthResource | None = None
         self._connectors: ConnectorsResource | None = None
         self._ingest: IngestionResource | None = None
+        self._onboarding: OnboardingResource | None = None
         self._retrievals: RetrievalsResource | None = None
         self._policies: PoliciesResource | None = None
         self._identity_providers: IdentityProvidersResource | None = None
@@ -93,6 +97,13 @@ class AsyncGatecoClient:
         return self._answers
 
     @property
+    def api_keys(self) -> ApiKeysResource:
+        """API key creation, listing, deletion, and rotation."""
+        if self._api_keys is None:
+            self._api_keys = ApiKeysResource(self)
+        return self._api_keys
+
+    @property
     def auth(self) -> AuthResource:
         """Authentication operations."""
         if self._auth is None:
@@ -112,6 +123,13 @@ class AsyncGatecoClient:
         if self._ingest is None:
             self._ingest = IngestionResource(self)
         return self._ingest
+
+    @property
+    def onboarding(self) -> OnboardingResource:
+        """Onboarding status and dismissal."""
+        if self._onboarding is None:
+            self._onboarding = OnboardingResource(self)
+        return self._onboarding
 
     @property
     def retrievals(self) -> RetrievalsResource:
@@ -392,6 +410,10 @@ class GatecoClient:
         return _SyncAnswersProxy(self._async_client.answers, self._run)
 
     @property
+    def api_keys(self) -> _SyncApiKeysProxy:
+        return _SyncApiKeysProxy(self._async_client.api_keys, self._run)
+
+    @property
     def auth(self) -> _SyncAuthProxy:
         return _SyncAuthProxy(self._async_client.auth, self._run)
 
@@ -402,6 +424,10 @@ class GatecoClient:
     @property
     def ingest(self) -> _SyncIngestionProxy:
         return _SyncIngestionProxy(self._async_client.ingest, self._run)
+
+    @property
+    def onboarding(self) -> _SyncOnboardingProxy:
+        return _SyncOnboardingProxy(self._async_client.onboarding, self._run)
 
     @property
     def retrievals(self) -> _SyncRetrievalsProxy:
@@ -483,6 +509,20 @@ class _SyncProxy:
 class _SyncAnswersProxy(_SyncProxy):
     def execute(self, query: str, **kwargs: Any) -> Any:
         return self._run(self._async.execute(query, **kwargs))
+
+
+class _SyncApiKeysProxy(_SyncProxy):
+    def create(self, name: str, expires_at: str | None = None) -> Any:
+        return self._run(self._async.create(name, expires_at))
+
+    def list(self) -> Any:
+        return self._run(self._async.list())
+
+    def delete(self, key_id: str) -> Any:
+        return self._run(self._async.delete(key_id))
+
+    def rotate(self, key_id: str) -> Any:
+        return self._run(self._async.rotate(key_id))
 
 
 class _SyncAuthProxy(_SyncProxy):
@@ -677,6 +717,14 @@ class _SyncDataCatalogProxy(_SyncProxy):
 
     def update_metadata(self, resource_id: str, **kwargs: Any) -> Any:
         return self._run(self._async.update_metadata(resource_id, **kwargs))
+
+
+class _SyncOnboardingProxy(_SyncProxy):
+    def status(self) -> Any:
+        return self._run(self._async.status())
+
+    def dismiss(self) -> Any:
+        return self._run(self._async.dismiss())
 
 
 class _SyncPipelinesProxy(_SyncProxy):
