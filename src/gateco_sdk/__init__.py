@@ -4,6 +4,7 @@ from gateco_sdk._version import __version__
 from gateco_sdk.client import AsyncGatecoClient, GatecoClient
 from gateco_sdk.resources.api_keys import ApiKeysResource
 from gateco_sdk.resources.onboarding import OnboardingResource
+from gateco_sdk.resources.relationships import RelationshipResource
 
 __all__ = [
     "__version__",
@@ -11,4 +12,5 @@ __all__ = [
     "GatecoClient",
     "ApiKeysResource",
     "OnboardingResource",
+    "RelationshipResource",
 ]

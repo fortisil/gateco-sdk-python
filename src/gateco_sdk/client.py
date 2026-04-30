@@ -22,6 +22,7 @@ from gateco_sdk.resources.onboarding import OnboardingResource
 from gateco_sdk.resources.pipelines import PipelinesResource
 from gateco_sdk.resources.policies import PoliciesResource
 from gateco_sdk.resources.principals import PrincipalsResource
+from gateco_sdk.resources.relationships import RelationshipResource
 from gateco_sdk.resources.retroactive import RetroactiveResource
 from gateco_sdk.resources.retrievals import RetrievalsResource
 from gateco_sdk.resources.simulator import SimulatorResource
@@ -84,6 +85,7 @@ class AsyncGatecoClient:
         self._simulator: SimulatorResource | None = None
         self._dashboard: DashboardResource | None = None
         self._retroactive: RetroactiveResource | None = None
+        self._relationships: RelationshipResource | None = None
 
     # ------------------------------------------------------------------
     # Resource namespaces (lazy)
@@ -207,6 +209,13 @@ class AsyncGatecoClient:
         if self._retroactive is None:
             self._retroactive = RetroactiveResource(self)
         return self._retroactive
+
+    @property
+    def relationships(self) -> RelationshipResource:
+        """Principal-resource relationship management."""
+        if self._relationships is None:
+            self._relationships = RelationshipResource(self)
+        return self._relationships
 
     # ------------------------------------------------------------------
     # Convenience auth methods on the client itself
@@ -474,6 +483,10 @@ class GatecoClient:
     @property
     def retroactive(self) -> _SyncRetroactiveProxy:
         return _SyncRetroactiveProxy(self._async_client.retroactive, self._run)
+
+    @property
+    def relationships(self) -> _SyncRelationshipsProxy:
+        return _SyncRelationshipsProxy(self._async_client.relationships, self._run)
 
     # ------------------------------------------------------------------
     # Context manager
@@ -788,3 +801,29 @@ class _SyncDashboardProxy(_SyncProxy):
 class _SyncRetroactiveProxy(_SyncProxy):
     def register(self, connector_id: str, **kwargs: Any) -> Any:
         return self._run(self._async.register(connector_id, **kwargs))
+
+
+class _SyncRelationshipsProxy(_SyncProxy):
+    def create(
+        self,
+        subject_principal_id: str,
+        relation_name: str,
+        object_resource_id: str,
+    ) -> Any:
+        return self._run(
+            self._async.create(subject_principal_id, relation_name, object_resource_id)
+        )
+
+    def list(
+        self,
+        *,
+        subject_id: str | None = None,
+        relation: str | None = None,
+        object_id: str | None = None,
+    ) -> Any:
+        return self._run(
+            self._async.list(subject_id=subject_id, relation=relation, object_id=object_id)
+        )
+
+    def delete(self, relationship_id: str) -> None:
+        return self._run(self._async.delete(relationship_id))
