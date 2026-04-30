@@ -72,7 +72,7 @@ client = GatecoClient("https://api.gateco.ai")
 client.login("user@example.com", "password")
 ```
 
-The API key is sent as `Authorization: Bearer <key>` on every request. Set it via the
+The API key is sent as the `X-API-Key` header on every request. Set it via the
 `GATECO_API_KEY` environment variable when using the CLI or MCP server.
 
 ---
@@ -130,7 +130,7 @@ with GatecoClient("https://api.gateco.ai", api_key="gck_live_abc123...") as clie
 
 ## Available Namespaces
 
-All 17 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoClient` (sync).
+All 18 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoClient` (sync).
 
 | Namespace | Description |
 |-----------|-------------|
@@ -148,6 +148,7 @@ All 17 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoC
 | `client.pipelines` | Pipeline CRUD and run management |
 | `client.policies` | Policy CRUD, lifecycle (activate/archive), and templates |
 | `client.principals` | Principal listing, detail, and resolution by email or provider subject |
+| `client.relationships` | REBAC direct-relation CRUD — create, list, delete 1-hop tuples (Pro+) |
 | `client.retroactive` | Retroactive vector registration for existing connectors |
 | `client.retrievals` | Permission-gated retrieval execution, policy filter, and history |
 | `client.simulator` | Dry-run and live-preview access simulation (Pro+) |
@@ -202,6 +203,35 @@ new_key = await client.api_keys.rotate(key_id="key-uuid-here")
 
 # Delete a key
 await client.api_keys.delete(key_id="key-uuid-here")
+```
+
+---
+
+## Relationship-Based Access Control (REBAC)
+
+```python
+# Create a direct relation: Alice owns resource R
+rel = await client.relationships.create(
+    subject_principal_id="principal-uuid",
+    relation_name="owner_of",
+    object_resource_id="resource-uuid",
+)
+print(rel["id"])
+
+# List relations for a principal
+rels = await client.relationships.list(
+    subject_id="principal-uuid",
+    relation="owner_of",
+)
+
+# Delete a relation (invalidates policy cache immediately)
+await client.relationships.delete(relationship_id=rel["id"])
+```
+
+Use `relation.<name>` as a policy condition field to gate access on the existence of a tuple:
+```python
+# Policy rule: allow access when principal has owner_of relation on the resource
+rule = {"field": "relation.owner_of", "operator": "eq", "value": True}
 ```
 
 ---
