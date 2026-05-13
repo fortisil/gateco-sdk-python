@@ -35,7 +35,7 @@ from gateco_sdk.types.connectors import (
     SearchConfig,
     TestConnectorResponse,
 )
-from gateco_sdk.types.dashboard import DashboardStats
+from gateco_sdk.types.dashboard import DashboardSparklines, DashboardStats
 from gateco_sdk.types.data_catalog import (
     DataCatalogFilters,
     GatedResource,
@@ -162,6 +162,7 @@ __all__ = [
     "SimulationRequest",
     "SimulationResult",
     # dashboard
+    "DashboardSparklines",
     "DashboardStats",
     # retroactive
     "RetroactiveRegisterRequest",
