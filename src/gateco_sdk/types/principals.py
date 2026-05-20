@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PrincipalAttributes(BaseModel):
@@ -30,5 +30,10 @@ class Principal(BaseModel):
     roles: list[str] = []
     attributes: dict[str, Any] = {}
     status: str | None = None
+
+    @field_validator("attributes", mode="before")
+    @classmethod
+    def _coerce_attributes(cls, v: Any) -> dict[str, Any]:
+        return v if v is not None else {}
     last_seen: str | None = None
     created_at: str | None = None
