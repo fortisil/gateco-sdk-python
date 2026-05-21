@@ -297,6 +297,20 @@ async for connector in client.connectors.list_all():
 
 ---
 
+## Rate Limits
+
+Three endpoints enforce per-org-per-minute limits:
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /api/retrievals/execute` | 60/min |
+| `POST /api/answers/execute` | 20/min |
+| `POST /api/simulator/preview` | 10/min |
+
+Exceeded limits raise `RateLimitError`. The SDK retries automatically with exponential backoff (configurable via `max_retries`). Limits are org-scoped and reset on process restart (in-memory implementation).
+
+---
+
 ## Error Handling
 
 ```python
