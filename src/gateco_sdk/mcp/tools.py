@@ -149,7 +149,7 @@ async def handle_check_access(
     connector_id: str | None = None,
     resource_ids: list[str] | None = None,
 ) -> str:
-    """Dry-run access simulation (Pro+)."""
+    """Dry-run access simulation (Growth+)."""
     from gateco_sdk.cli import _get_client
 
     try:
