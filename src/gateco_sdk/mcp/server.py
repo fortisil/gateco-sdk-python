@@ -78,7 +78,7 @@ def create_server() -> FastMCP:
         search_mode: str = "vector",
         alpha: float | None = None,
     ) -> str:
-        """Grounded answer synthesis through Gateco (Pro+ plan required).
+        """Grounded answer synthesis through Gateco (Growth+ plan required).
 
         Retrieves policy-filtered chunks and synthesizes a natural language
         answer with citations. Denied chunks are never included in the
@@ -113,7 +113,7 @@ def create_server() -> FastMCP:
         connector_id: str | None = None,
         resource_ids: list[str] | None = None,
     ) -> str:
-        """Dry-run access simulation through Gateco (Pro+ plan required).
+        """Dry-run access simulation through Gateco (Growth+ plan required).
 
         Evaluates what a principal can and cannot access without
         performing an actual retrieval. Useful for debugging policy

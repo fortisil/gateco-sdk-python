@@ -110,7 +110,7 @@ async def handle_ask(
     alpha: float | None = None,
     email: str | None = None,
 ) -> str:
-    """Grounded answer synthesis (Pro+).
+    """Grounded answer synthesis (Growth+).
 
     Either ``principal_id`` or ``email`` must be supplied.  When only
     ``email`` is provided the principal is resolved before executing the
