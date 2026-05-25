@@ -102,16 +102,18 @@ class TestConnectorsActions:
         mock_api.post("/api/connectors/c1/test").respond(
             200,
             json={
-                "status": "ok",
-                "message": "Connection successful",
-                "latency_ms": 15.2,
-                "details": {"version": "16.1"},
+                "success": True,
+                "health_status": "ok",
+                "authenticated": True,
+                "latency_ms": 15,
+                "server_version": "16.1",
             },
         )
         result = await authed_client.connectors.test("c1")
         assert isinstance(result, TestConnectorResponse)
-        assert result.status == "ok"
-        assert result.latency_ms == 15.2
+        assert result.success is True
+        assert result.health_status == "ok"
+        assert result.latency_ms == 15
 
     @pytest.mark.asyncio
     async def test_bind(self, authed_client, mock_api):

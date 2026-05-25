@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
+
+# Matches backend database/enums.py IdentityProviderType
+IdentityProviderType = Literal["okta", "azure_entra_id", "aws_iam", "gcp"]
 
 
 class SyncConfig(BaseModel):

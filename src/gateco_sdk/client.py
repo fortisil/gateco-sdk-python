@@ -26,6 +26,7 @@ from gateco_sdk.resources.relationships import RelationshipResource
 from gateco_sdk.resources.retroactive import RetroactiveResource
 from gateco_sdk.resources.retrievals import RetrievalsResource
 from gateco_sdk.resources.simulator import SimulatorResource
+from gateco_sdk.resources.users import UsersResource
 from gateco_sdk.types.auth import TokenResponse
 
 
@@ -86,6 +87,7 @@ class AsyncGatecoClient:
         self._dashboard: DashboardResource | None = None
         self._retroactive: RetroactiveResource | None = None
         self._relationships: RelationshipResource | None = None
+        self._users: UsersResource | None = None
 
     # ------------------------------------------------------------------
     # Resource namespaces (lazy)
@@ -216,6 +218,13 @@ class AsyncGatecoClient:
         if self._relationships is None:
             self._relationships = RelationshipResource(self)
         return self._relationships
+
+    @property
+    def users(self) -> UsersResource:
+        """Current user profile (GET /me, PATCH /me)."""
+        if self._users is None:
+            self._users = UsersResource(self)
+        return self._users
 
     # ------------------------------------------------------------------
     # Convenience auth methods on the client itself

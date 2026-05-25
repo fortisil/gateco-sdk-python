@@ -145,3 +145,63 @@ class PoliciesResource:
             "POST", f"/api/policies/{policy_id}/archive"
         )
         return Policy.model_validate(data)
+
+    # ------------------------------------------------------------------
+    # Templates
+    # ------------------------------------------------------------------
+
+    async def list_templates(self) -> list[dict[str, Any]]:
+        """List the static catalog of policy templates (all plans).
+
+        Returns a list of template dicts with ``id``, ``name``, ``description``,
+        ``category``, and ``placeholder_keys`` fields.
+        """
+        raw = await self._client._request("GET", "/api/policies/templates")
+        items = (raw or {}).get("data", [])
+        return items if isinstance(items, list) else []
+
+    async def create_from_template(
+        self,
+        template_id: str,
+        placeholder_values: dict[str, str],
+        *,
+        name: str | None = None,
+    ) -> Policy:
+        """Create a draft policy from a template (Pro+ only).
+
+        Args:
+            template_id: One of ``group_rbac``, ``department_access``,
+                ``classification_ceiling``, ``deny_sensitive``, ``label_access``,
+                ``connector_scoped_allow``, ``global_internal_read``.
+            placeholder_values: Map of ``{placeholder_key: value}`` substitutions.
+            name: Optional override for the policy name.
+        """
+        body: dict[str, Any] = {
+            "template_id": template_id,
+            "placeholder_values": placeholder_values,
+        }
+        if name is not None:
+            body["name"] = name
+        data = await self._client._request(
+            "POST", "/api/policies/from-template", json=body
+        )
+        return Policy.model_validate(data)
+
+    # ------------------------------------------------------------------
+    # Versioning
+    # ------------------------------------------------------------------
+
+    async def list_versions(self, policy_id: str) -> list[dict[str, Any]]:
+        """List all saved versions of a policy (Pro+ only)."""
+        raw = await self._client._request(
+            "GET", f"/api/policies/{policy_id}/versions"
+        )
+        items = (raw or {}).get("data", [])
+        return items if isinstance(items, list) else []
+
+    async def restore_version(self, policy_id: str, version: int) -> Policy:
+        """Restore a policy to a saved version (Pro+ only)."""
+        data = await self._client._request(
+            "POST", f"/api/policies/{policy_id}/versions/{version}/restore"
+        )
+        return Policy.model_validate(data)

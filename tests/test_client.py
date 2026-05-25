@@ -94,11 +94,17 @@ class TestConnectors:
     async def test_test_connector(self, authed_client, mock_api):
         mock_api.post("/api/connectors/c1/test").respond(
             200,
-            json={"status": "ok", "message": "reachable", "latency_ms": 42.5},
+            json={
+                "success": True,
+                "health_status": "ok",
+                "authenticated": True,
+                "latency_ms": 42,
+            },
         )
         result = await authed_client.connectors.test("c1")
-        assert result.status == "ok"
-        assert result.latency_ms == 42.5
+        assert result.success is True
+        assert result.health_status == "ok"
+        assert result.latency_ms == 42
 
 
 # ------------------------------------------------------------------

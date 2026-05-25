@@ -115,6 +115,31 @@ class AuthResource:
         )
         return token_resp
 
+    async def exchange_oauth_code(self, code: str) -> TokenResponse:
+        """Exchange a one-time OAuth authorization code for tokens.
+
+        The frontend receives the ``code`` query parameter after the OAuth
+        redirect and passes it here. Stores the returned tokens in the client.
+
+        Args:
+            code: The one-time authorization code from the OAuth callback.
+
+        Returns:
+            :class:`~gateco_sdk.types.auth.TokenResponse` with stored tokens.
+        """
+        data = await self._client._request(
+            "POST",
+            "/api/auth/exchange",
+            json={"code": code},
+            authenticate=False,
+        )
+        token_resp = _parse_login_response(data)
+        self._client._token_manager.set_tokens(
+            token_resp.access_token,
+            token_resp.refresh_token,
+        )
+        return token_resp
+
     async def logout(self) -> None:
         """Invalidate the current session."""
         await self._client._request("POST", "/api/auth/logout")

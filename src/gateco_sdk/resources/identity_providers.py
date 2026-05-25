@@ -119,3 +119,60 @@ class IdentityProvidersResource:
             "POST", f"/api/identity-providers/{idp_id}/sync"
         )
         return data or {}
+
+    # ------------------------------------------------------------------
+    # SCIM token management
+    # ------------------------------------------------------------------
+
+    async def generate_scim_token(self, idp_id: str) -> dict[str, Any]:
+        """Generate a SCIM bearer token for an IDP (Enterprise only).
+
+        The plaintext token is returned exactly once and is never retrievable
+        again. Generating a new token automatically revokes any existing token
+        for this IDP.
+        """
+        data = await self._client._request(
+            "POST", f"/api/identity-providers/{idp_id}/scim-token"
+        )
+        return data or {}
+
+    async def revoke_scim_token(self, idp_id: str) -> None:
+        """Revoke the current SCIM token for an identity provider."""
+        await self._client._request(
+            "DELETE", f"/api/identity-providers/{idp_id}/scim-token"
+        )
+
+    # ------------------------------------------------------------------
+    # Policy suggestions
+    # ------------------------------------------------------------------
+
+    async def suggest_policies(self, idp_id: str) -> list[dict[str, Any]]:
+        """Generate conservative policy suggestions from synced IDP principal data (Pro+ only).
+
+        Analyzes groups and departments to suggest RBAC/ABAC starting policies
+        with confidence scores and explanations.
+        """
+        raw = await self._client._request(
+            "POST", f"/api/identity-providers/{idp_id}/suggest-policies"
+        )
+        items = (raw or {}).get("suggestions", [])
+        return items if isinstance(items, list) else []
+
+    async def apply_policy_suggestions(
+        self,
+        idp_id: str,
+        suggestion_ids: list[str],
+    ) -> dict[str, Any]:
+        """Apply accepted policy suggestions as draft policies (Pro+ only).
+
+        Args:
+            idp_id: The identity provider ID.
+            suggestion_ids: List of suggestion IDs to apply. Only accepted
+                suggestions create policies; rejected IDs are ignored.
+        """
+        data = await self._client._request(
+            "POST",
+            f"/api/identity-providers/{idp_id}/apply-policy-suggestions",
+            json={"suggestion_ids": suggestion_ids},
+        )
+        return data or {}

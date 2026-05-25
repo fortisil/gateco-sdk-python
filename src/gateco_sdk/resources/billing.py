@@ -35,7 +35,7 @@ class BillingResource:
         raw = await self._client._request(
             "GET", "/api/plans", authenticate=False
         )
-        plans_raw = raw.get("plans", []) if raw else []
+        plans_raw = raw.get("data", []) if raw else []
         return [Plan.model_validate(p) for p in plans_raw]
 
     # ------------------------------------------------------------------
