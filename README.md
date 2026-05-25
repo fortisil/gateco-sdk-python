@@ -130,7 +130,7 @@ with GatecoClient("https://api.gateco.ai", api_key="gck_live_abc123...") as clie
 
 ## Available Namespaces
 
-All 18 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoClient` (sync).
+All 19 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoClient` (sync).
 
 | Namespace | Description |
 |-----------|-------------|
@@ -138,11 +138,11 @@ All 18 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoC
 | `client.api_keys` | Create, list, delete, and rotate API keys |
 | `client.audit` | Audit log listing and CSV export |
 | `client.auth` | Login, signup, token refresh, logout |
-| `client.billing` | Plans, usage meters, invoices, Stripe checkout and portal |
+| `client.billing` | Plans, usage meters, invoices, subscription, Stripe checkout and portal |
 | `client.connectors` | Connector CRUD, connection testing, search/ingestion config, coverage, classification suggestions |
-| `client.dashboard` | Aggregated dashboard statistics |
+| `client.dashboard` | Aggregated dashboard statistics with optional sparklines |
 | `client.data_catalog` | Gated resource listing and metadata updates |
-| `client.identity_providers` | Identity provider CRUD and sync (Okta, Azure, AWS, GCP) |
+| `client.identity_providers` | Identity provider CRUD and sync (Okta, Azure Entra ID, AWS IAM, GCP) |
 | `client.ingest` | Single-document, batch, and file ingestion (Tier 1 connectors) |
 | `client.onboarding` | Onboarding status (6 computed steps) and checklist dismissal |
 | `client.pipelines` | Pipeline CRUD and run management |
@@ -151,7 +151,8 @@ All 18 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoC
 | `client.relationships` | REBAC direct-relation CRUD — create, list, delete 1-hop tuples (Pro+) |
 | `client.retroactive` | Retroactive vector registration for existing connectors |
 | `client.retrievals` | Permission-gated retrieval execution, policy filter, and history |
-| `client.simulator` | Dry-run and live-preview access simulation (Pro+) |
+| `client.simulator` | Dry-run, live-preview, and batch-preview access simulation (Pro+) |
+| `client.users` | Current user profile — `get_me()`, `update_me(name)` |
 
 ---
 
