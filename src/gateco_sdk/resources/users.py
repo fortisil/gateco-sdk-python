@@ -1,8 +1,8 @@
-"""Users resource — current user profile (GET /me, PATCH /me)."""
+"""Users resource — current user profile (GET /me, PATCH /me) and organization settings."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from gateco_sdk.types.auth import User
 
@@ -41,3 +41,57 @@ class UsersResource:
             "PATCH", "/api/users/me", json={"name": name}
         )
         return User.model_validate(data)
+
+    # ------------------------------------------------------------------
+    # Organization settings
+    # ------------------------------------------------------------------
+
+    async def get_org_settings(self) -> dict[str, Any]:
+        """Get organization-level settings.
+
+        Returns configuration status for features that require per-org
+        setup (e.g. whether an LLM API key is configured for answer
+        synthesis).
+
+        Returns:
+            Dict with keys: ``id``, ``name``, ``slug``, ``plan``,
+            ``failure_mode``, ``llm_provider``,
+            ``llm_api_key_configured``.
+        """
+        data = await self._client._request("GET", "/api/organization/settings")
+        return dict(data) if data else {}
+
+    async def update_org_settings(
+        self,
+        *,
+        name: str | None = None,
+        failure_mode: str | None = None,
+        llm_api_key: str | None = None,
+        llm_provider: str | None = None,
+    ) -> dict[str, Any]:
+        """Update organization settings.
+
+        All parameters are optional; only supplied values are changed.
+
+        Args:
+            name: New organization display name.
+            failure_mode: ``"closed"`` or ``"open_with_audit"`` (Enterprise).
+            llm_api_key: Plaintext OpenAI API key — encrypted before storage.
+            llm_provider: LLM provider identifier (``"openai"`` in v1).
+
+        Returns:
+            Updated organization settings dict.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if failure_mode is not None:
+            body["failure_mode"] = failure_mode
+        if llm_api_key is not None:
+            body["llm_api_key"] = llm_api_key
+        if llm_provider is not None:
+            body["llm_provider"] = llm_provider
+        data = await self._client._request(
+            "PATCH", "/api/organization/settings", json=body
+        )
+        return dict(data) if data else {}

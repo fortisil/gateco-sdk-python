@@ -10,6 +10,7 @@ from gateco_sdk.types.billing import (
     Invoice,
     Plan,
     Subscription,
+    SyncSubscriptionResponse,
     Usage,
 )
 
@@ -114,3 +115,19 @@ class BillingResource:
             "POST", "/api/billing/portal", json=body
         )
         return data or {}
+
+    # ------------------------------------------------------------------
+    # Subscription sync
+    # ------------------------------------------------------------------
+
+    async def sync_subscription(self) -> SyncSubscriptionResponse:
+        """Re-sync the organization's plan from Stripe.
+
+        Use this when a checkout succeeded but the plan was not updated
+        (e.g. due to a webhook delivery delay).  Queries Stripe directly
+        and updates the org plan if it has drifted.
+        """
+        data = await self._client._request(
+            "POST", "/api/billing/sync-subscription", json={}
+        )
+        return SyncSubscriptionResponse.model_validate(data)

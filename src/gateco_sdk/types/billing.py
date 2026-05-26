@@ -79,9 +79,19 @@ class Subscription(BaseModel):
     id: str
     plan_id: str
     status: str
+    billing_period: str | None = None
     current_period_start: str | None = None
     current_period_end: str | None = None
     cancel_at_period_end: bool = False
+
+
+class SyncSubscriptionResponse(BaseModel):
+    """Response from ``POST /api/billing/sync-subscription``."""
+
+    synced: bool
+    already_correct: bool
+    plan: str
+    billing_period: str | None = None
 
 
 class CheckoutRequest(BaseModel):
