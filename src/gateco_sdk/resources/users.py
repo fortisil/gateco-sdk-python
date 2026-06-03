@@ -68,6 +68,8 @@ class UsersResource:
         failure_mode: str | None = None,
         llm_api_key: str | None = None,
         llm_provider: str | None = None,
+        clear_llm_api_key: bool = False,
+        llm_key_query_cap: int | None = None,
     ) -> dict[str, Any]:
         """Update organization settings.
 
@@ -77,7 +79,11 @@ class UsersResource:
             name: New organization display name.
             failure_mode: ``"closed"`` or ``"open_with_audit"`` (Enterprise).
             llm_api_key: Plaintext OpenAI API key — encrypted before storage.
+                Setting this also resets ``llm_key_uses`` to 0.
             llm_provider: LLM provider identifier (``"openai"`` in v1).
+            clear_llm_api_key: When ``True``, removes the configured LLM API key.
+            llm_key_query_cap: Soft cap on queries against the org's own key.
+                ``None`` removes the cap. Pass ``-1`` as a sentinel to unset.
 
         Returns:
             Updated organization settings dict.
@@ -91,6 +97,10 @@ class UsersResource:
             body["llm_api_key"] = llm_api_key
         if llm_provider is not None:
             body["llm_provider"] = llm_provider
+        if clear_llm_api_key:
+            body["clear_llm_api_key"] = True
+        if llm_key_query_cap is not None:
+            body["llm_key_query_cap"] = llm_key_query_cap
         data = await self._client._request(
             "PATCH", "/api/organization/settings", json=body
         )

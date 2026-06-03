@@ -59,7 +59,7 @@ class SimulatorResource:
         search_mode: Literal["vector", "keyword", "hybrid"] = "vector",
         alpha: float | None = None,
     ) -> dict[str, Any]:
-        """Execute a live preview — real search + policy evaluation for a single principal (Pro+ only).
+        """Execute a live preview — real search + policy evaluation for a single principal (Growth+ only).
 
         Denied results contain metadata and denial reasons but no content.
         ``top_k`` is capped at 20 server-side.
@@ -96,7 +96,7 @@ class SimulatorResource:
         search_mode: Literal["vector", "keyword", "hybrid"] = "vector",
         alpha: float | None = None,
     ) -> dict[str, Any]:
-        """Execute a batch live preview — one search, up to 5 principals (Pro+ only).
+        """Execute a batch live preview — one search, up to 5 principals (Growth+ only).
 
         Runs the search once then fans out policy evaluation across all specified
         principals in parallel. Returns a result matrix per principal.

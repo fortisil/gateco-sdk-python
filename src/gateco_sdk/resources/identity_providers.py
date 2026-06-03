@@ -147,7 +147,7 @@ class IdentityProvidersResource:
     # ------------------------------------------------------------------
 
     async def suggest_policies(self, idp_id: str) -> list[dict[str, Any]]:
-        """Generate conservative policy suggestions from synced IDP principal data (Pro+ only).
+        """Generate conservative policy suggestions from synced IDP principal data (Growth+ only).
 
         Analyzes groups and departments to suggest RBAC/ABAC starting policies
         with confidence scores and explanations.
@@ -163,7 +163,7 @@ class IdentityProvidersResource:
         idp_id: str,
         suggestion_ids: list[str],
     ) -> dict[str, Any]:
-        """Apply accepted policy suggestions as draft policies (Pro+ only).
+        """Apply accepted policy suggestions as draft policies (Growth+ only).
 
         Args:
             idp_id: The identity provider ID.

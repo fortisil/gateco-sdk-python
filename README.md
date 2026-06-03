@@ -134,7 +134,7 @@ All 19 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoC
 
 | Namespace | Description |
 |-----------|-------------|
-| `client.answers` | Grounded answer synthesis with policy-filtered citations (Pro+) |
+| `client.answers` | Grounded answer synthesis with policy-filtered citations (Team+) |
 | `client.api_keys` | Create, list, delete, and rotate API keys |
 | `client.audit` | Audit log listing and CSV export |
 | `client.auth` | Login, signup, token refresh, logout |
@@ -148,10 +148,10 @@ All 19 namespaces are available on both `AsyncGatecoClient` (async) and `GatecoC
 | `client.pipelines` | Pipeline CRUD and run management |
 | `client.policies` | Policy CRUD, lifecycle (activate/archive), and templates |
 | `client.principals` | Principal listing, detail, and resolution by email or provider subject |
-| `client.relationships` | REBAC direct-relation CRUD — create, list, delete 1-hop tuples (Pro+) |
+| `client.relationships` | REBAC direct-relation CRUD — create, list, delete 1-hop tuples (Team+) |
 | `client.retroactive` | Retroactive vector registration for existing connectors |
 | `client.retrievals` | Permission-gated retrieval execution, policy filter, and history |
-| `client.simulator` | Dry-run, live-preview, and batch-preview access simulation (Pro+) |
+| `client.simulator` | Dry-run, live-preview, and batch-preview access simulation (Growth+) |
 | `client.users` | Current user profile — `get_me()`, `update_me(name)` |
 
 ---
@@ -269,7 +269,7 @@ principal = await client.principals.resolve(
 
 ---
 
-## Grounded Answer Synthesis (Pro+)
+## Grounded Answer Synthesis (Team+)
 
 ```python
 answer = await client.answers.execute(
@@ -365,8 +365,8 @@ gateco-mcp
 | Tool | Description |
 |------|-------------|
 | `gateco_retrieve` | Permission-aware retrieval (vector/keyword/hybrid/grep) |
-| `gateco_ask` | Grounded answer synthesis with search modes (Pro+) |
-| `gateco_check_access` | Dry-run access simulation (Pro+) |
+| `gateco_ask` | Grounded answer synthesis with search modes (Team+) |
+| `gateco_check_access` | Dry-run access simulation (Growth+) |
 | `gateco_list_connectors` | List connectors with readiness levels |
 | `gateco_list_principals` | List identity principals |
 | `gateco_resolve_principal` | Resolve a principal by email or provider subject |

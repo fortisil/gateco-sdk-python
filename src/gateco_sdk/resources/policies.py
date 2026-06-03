@@ -167,7 +167,7 @@ class PoliciesResource:
         *,
         name: str | None = None,
     ) -> Policy:
-        """Create a draft policy from a template (Pro+ only).
+        """Create a draft policy from a template (Team+ only).
 
         Args:
             template_id: One of ``group_rbac``, ``department_access``,
@@ -192,7 +192,7 @@ class PoliciesResource:
     # ------------------------------------------------------------------
 
     async def list_versions(self, policy_id: str) -> list[dict[str, Any]]:
-        """List all saved versions of a policy (Pro+ only)."""
+        """List all saved versions of a policy (Team+ only)."""
         raw = await self._client._request(
             "GET", f"/api/policies/{policy_id}/versions"
         )
@@ -200,7 +200,7 @@ class PoliciesResource:
         return items if isinstance(items, list) else []
 
     async def restore_version(self, policy_id: str, version: int) -> Policy:
-        """Restore a policy to a saved version (Pro+ only)."""
+        """Restore a policy to a saved version (Team+ only)."""
         data = await self._client._request(
             "POST", f"/api/policies/{policy_id}/versions/{version}/restore"
         )

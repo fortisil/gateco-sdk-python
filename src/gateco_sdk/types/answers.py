@@ -15,6 +15,22 @@ class Citation(BaseModel):
     score: float | None = None
 
 
+class RetrievalDiagnostics(BaseModel):
+    """Diagnostics explaining a retrieval outcome."""
+
+    model_config = {"extra": "allow"}
+
+    candidates_fetched: int = 0
+    candidates_allowed: int = 0
+    candidates_denied: int = 0
+    refill_rounds: int = 0
+    policies_evaluated: int = 0
+    active_denial_reasons: list[str] = []
+    metadata_resolution_mode: str | None = None
+    readiness_level: int | None = None
+    outcome_detail: str = ""
+
+
 class Answer(BaseModel):
     """Response from the answer synthesis endpoint."""
 
@@ -35,3 +51,5 @@ class Answer(BaseModel):
     chunks_used_initial: int = 0
     chunks_used_final: int = 0
     retry_used: bool = False
+    cap_reached: bool = False
+    diagnostics: RetrievalDiagnostics | None = None
