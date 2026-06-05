@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0] - 2026-06-05
+
+### Added
+- `client.users.update_org_settings()` now accepts `clear_llm_api_key=True` and `llm_key_query_cap` to manage the per-org LLM API key and soft rotation cap
+- `LlmCreditExhaustedError` — raised when the org's 100 paid-tier fallback synthesis credits are exhausted
+- `LlmKeyNotConfiguredError` — raised when answer synthesis is attempted on the free tier without a configured API key
+- `Answer.cap_reached` field — `True` when the latest response has hit the admin-configured query cap (synthesis still succeeds; rotate key to reset counter)
+- MCP `gateco_ask` tool now appends a key-rotation reminder when `cap_reached` is set
+
+### Fixed
+- `error_from_response()` now correctly parses FastAPI's `{"detail": {"code": "...", "message": "..."}}` error envelope; previously all backend error codes were lost and errors fell back to generic messages
+
 ## [1.2.0] - 2026-05-25
 
 ### Added
@@ -8,7 +20,7 @@
 - `client.billing.get_subscription()` — fetch current subscription with `billing_period` and renewal date
 - `client.billing.create_portal()` — create a Stripe billing portal session with redirect URL
 - `client.dashboard.get_stats(sparklines=True)` — optional sparklines parameter for time-series KPI arrays
-- `client.simulator.run_batch_preview()` — evaluate one search against up to 5 principals in parallel (Pro+)
+- `client.simulator.run_batch_preview()` — evaluate one search against up to 5 principals in parallel (Growth+)
 - `scripts/check_contract.py` — CI contract checker: walks OpenAPI spec and asserts SDK coverage
 
 ### Fixed

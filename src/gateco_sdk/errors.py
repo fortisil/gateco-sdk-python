@@ -130,6 +130,42 @@ class ValidationError(GatecoError):
         super().__init__(message, code=code, status_code=422)
 
 
+class LlmCreditExhaustedError(GatecoError):
+    """Raised when the org's 100 paid-tier fallback synthesis credits are exhausted.
+
+    Add an OpenAI API key in Organization Settings to continue using answer synthesis.
+    """
+
+    def __init__(
+        self,
+        message: str = (
+            "Free synthesis credit (100 calls) exhausted. "
+            "Add your OpenAI API key in Organization Settings."
+        ),
+        *,
+        code: str = "LLM_CREDIT_EXHAUSTED",
+    ) -> None:
+        super().__init__(message, code=code, status_code=422)
+
+
+class LlmKeyNotConfiguredError(GatecoError):
+    """Raised when answer synthesis is attempted on the free tier with no configured key.
+
+    Add an OpenAI API key in Organization Settings to enable answer synthesis.
+    """
+
+    def __init__(
+        self,
+        message: str = (
+            "Answer synthesis requires your own OpenAI API key on the free plan. "
+            "Add one in Organization Settings."
+        ),
+        *,
+        code: str = "LLM_KEY_NOT_CONFIGURED",
+    ) -> None:
+        super().__init__(message, code=code, status_code=422)
+
+
 # ---------------------------------------------------------------------------
 # Mapping helpers
 # ---------------------------------------------------------------------------
@@ -150,6 +186,8 @@ _CODE_TO_ERROR: dict[str, type[GatecoError]] = {
     "CONFLICT": ConflictError,
     "VALIDATION_ERROR": ValidationError,
     "RATE_LIMIT_EXCEEDED": RateLimitError,
+    "LLM_CREDIT_EXHAUSTED": LlmCreditExhaustedError,
+    "LLM_KEY_NOT_CONFIGURED": LlmKeyNotConfiguredError,
     "INTERNAL_ERROR": GatecoError,
 }
 
@@ -174,7 +212,15 @@ def error_from_response(
     message = "An unexpected error occurred"
     upgrade_to: str | None = None
 
-    if body and isinstance(body.get("error"), dict):
+    # FastAPI sends {"detail": {"code": "...", "message": "..."}} or {"detail": "string"}
+    detail = body.get("detail") if body else None
+    if isinstance(detail, dict):
+        code = detail.get("code", code)
+        message = detail.get("message", message)
+        upgrade_to = detail.get("upgrade_to")
+    elif isinstance(detail, str):
+        message = detail
+    elif body and isinstance(body.get("error"), dict):
         err = body["error"]
         code = err.get("code", code)
         message = err.get("message", message)

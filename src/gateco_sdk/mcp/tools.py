@@ -14,6 +14,8 @@ from gateco_sdk.errors import (
     AuthorizationError,
     EntitlementError,
     GatecoError,
+    LlmCreditExhaustedError,
+    LlmKeyNotConfiguredError,
     NotFoundError,
     RateLimitError,
     ValidationError,
@@ -44,6 +46,18 @@ def _handle_error(exc: GatecoError) -> str:
     if isinstance(exc, RateLimitError):
         retry = f" Retry after {exc.retry_after}s." if exc.retry_after else ""
         return f"Rate limited.{retry}"
+    if isinstance(exc, LlmCreditExhaustedError):
+        return (
+            "Answer synthesis unavailable: your organization's 100 free synthesis calls "
+            "are exhausted. Add your OpenAI API key in Organization Settings "
+            "(https://app.gateco.ai/organization) to continue."
+        )
+    if isinstance(exc, LlmKeyNotConfiguredError):
+        return (
+            "Answer synthesis unavailable: this organization is on the free plan and "
+            "has no OpenAI API key configured. Add one in Organization Settings "
+            "(https://app.gateco.ai/organization) to enable answer synthesis."
+        )
     return f"Gateco error: {exc.message}"
 
 
@@ -139,7 +153,15 @@ async def handle_ask(
                 kwargs["alpha"] = alpha
 
             result = await client.answers.execute(query, **kwargs)
-        return format_answer(result)
+        output = format_answer(result)
+        if result.cap_reached:
+            output += (
+                "\n\n> **Key rotation reminder:** your organization has reached its "
+                "configured query cap. Rotate your OpenAI API key in "
+                "Organization Settings (https://app.gateco.ai/organization) "
+                "to reset the counter."
+            )
+        return output
     except GatecoError as exc:
         raise _ToolError(_handle_error(exc)) from exc
 
