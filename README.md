@@ -287,6 +287,84 @@ for citation in answer.citations:
 
 ---
 
+## Policy Creation
+
+```python
+# Create an RBAC policy
+policy = await client.policies.create(
+    name="Engineering read-only",
+    description="Allow engineering group to read internal resources",
+    type="rbac",
+    effect="allow",
+    rules=[{
+        "description": "Engineering group members",
+        "effect": "allow",
+        "conditions": [{"field": "principal.groups", "operator": "contains", "value": "engineering"}],
+        "priority": 1,
+    }],
+    resource_selectors=[{"field": "resource.classification", "op": "lte", "value": "internal"}],
+)
+```
+
+**Policy validation rules:**
+- Condition fields must use `resource.`, `principal.`, or `relation.` prefix.
+  Bare field names (e.g., `"classification"`) are rejected with 422 — they silently
+  resolve against the principal rather than the resource.
+- Policies with empty `resource_selectors` require `apply_to_all_resources=True` in
+  the request body to opt into matching all resources explicitly.
+
+---
+
+## Retrieval Diagnostics
+
+```python
+result = await client.retrievals.execute(
+    query="quarterly earnings",
+    principal_id="user_alice",
+    connector_id="connector_finance_docs",
+    search_mode="hybrid",
+)
+
+# All retrieval responses include diagnostics
+print(result.diagnostics.outcome_detail)    # Human-readable explanation
+print(result.diagnostics.candidates_fetched)  # How many candidates were checked
+print(result.diagnostics.candidates_denied)   # How many were denied by policy
+print(result.diagnostics.refill_rounds)       # How many refill rounds ran (0 = first pass sufficient)
+```
+
+---
+
+## Connector Preflight Check
+
+```python
+# Check if a connector is production-ready before using it in retrievals
+preflight = client.connectors.preflight(connector_id="...")
+print(preflight.ready_for_production)  # bool
+print(preflight.recommendation)        # What to fix next
+for check in preflight.checks:
+    print(f"{check.name}: {'PASS' if check.passed else 'FAIL'} (blocking={check.blocking})")
+```
+
+---
+
+## Dashboard Activation Metrics
+
+```python
+# Aggregated dashboard statistics
+stats = await client.dashboard.stats()
+print(stats["total_retrievals"])
+print(stats["allowed_retrievals"])
+
+# Activation funnel metrics
+activation = client.dashboard.get_activation_stats()
+print(activation.total_retrievals_30d)
+print(activation.allowed_retrievals_30d)
+print(activation.no_access_retrievals_30d)  # Retrievals where 0 results were authorized
+print(activation.p95_latency_ms)            # End-to-end p95 latency
+```
+
+---
+
 ## Pagination
 
 List endpoints return a `Page` object. Use `list_all()` for automatic async pagination:
