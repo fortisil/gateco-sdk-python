@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.5.0] - 2026-07-28
+
+### Added
+- `EntitlementError.reason` — distinguishes the two conditions that share a 403 `ENTITLEMENT_REQUIRED`:
+  `"feature_not_in_plan"` (the plan does not grant the feature) and `"resource_limit_reached"` (the plan
+  grants it, but the org's quota is full). Both carry `upgrade_to`, so previously they were
+  indistinguishable without parsing the message string.
+- `EntitlementError.is_limit` / `EntitlementError.is_feature_gate` convenience properties. When `reason`
+  is absent (older backend), both report a feature gate, preserving pre-1.5.0 behaviour.
+
+### Fixed
+- MCP tools no longer advise "Requires <plan> plan." when a plan *quota* is exhausted. A user who hit the
+  connector limit was told to upgrade when deleting a connector would have resolved it; the tool now says
+  "Delete an unused resource to free a slot." and mentions upgrading only as the secondary option.
+- `error_from_response()` no longer raises `UnboundLocalError` when the response body is
+  `{"detail": "<string>"}` rather than an object.
+
+### Requires
+- Backend with `error.reason` on entitlement responses (2026-07-28 or later). Against older backends the
+  SDK degrades gracefully: `reason` is `None` and `is_feature_gate` is `True`.
+
 ## [1.4.0] - 2026-06-05
 
 ### Added
