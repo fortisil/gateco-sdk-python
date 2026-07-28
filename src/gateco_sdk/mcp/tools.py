@@ -35,6 +35,18 @@ def _handle_error(exc: GatecoError) -> str:
     if isinstance(exc, AuthenticationError):
         return "Authentication failed. Run `gateco login` or set GATECO_API_KEY."
     if isinstance(exc, EntitlementError):
+        # A quota-exhausted 403 also carries upgrade_to, so advising "requires
+        # <plan>" unconditionally tells a customer to upgrade when deleting a
+        # resource would fix it. Distinguish the two.
+        if exc.is_limit:
+            upgrade = (
+                f" Upgrading to {exc.upgrade_to} raises the limit."
+                if exc.upgrade_to
+                else ""
+            )
+            return (
+                f"{exc.message}. Delete an unused resource to free a slot.{upgrade}"
+            )
         upgrade = f" Requires {exc.upgrade_to} plan." if exc.upgrade_to else ""
         return f"Entitlement required.{upgrade} {exc.message}"
     if isinstance(exc, NotFoundError):

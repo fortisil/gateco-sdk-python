@@ -54,6 +54,62 @@ class TestErrorFromResponse:
         assert isinstance(err, EntitlementError)
         assert err.upgrade_to == "pro"
 
+    def test_entitlement_reason_distinguishes_limit_from_feature_gate(self):
+        """A quota-exhausted 403 must be distinguishable from a missing feature.
+
+        Both carry ENTITLEMENT_REQUIRED *and* upgrade_to, so without `reason` a
+        caller would tell a user to upgrade when deleting a resource would fix it.
+        """
+        limit = error_from_response(
+            403,
+            {
+                "error": {
+                    "code": "ENTITLEMENT_REQUIRED",
+                    "message": "Plan limit reached: 10/10 connectors",
+                    "upgrade_to": "enterprise",
+                    "reason": "resource_limit_reached",
+                }
+            },
+        )
+        assert limit.reason == "resource_limit_reached"
+        assert limit.is_limit is True
+        assert limit.is_feature_gate is False
+
+        feature = error_from_response(
+            403,
+            {
+                "error": {
+                    "code": "ENTITLEMENT_REQUIRED",
+                    "message": "Feature 'siem_export' is not available on the growth plan",
+                    "upgrade_to": "enterprise",
+                    "reason": "feature_not_in_plan",
+                }
+            },
+        )
+        assert feature.is_limit is False
+        assert feature.is_feature_gate is True
+
+    def test_entitlement_reason_absent_on_older_servers(self):
+        """Without `reason`, keep the pre-existing reading (a feature gate)."""
+        err = error_from_response(
+            403,
+            {
+                "error": {
+                    "code": "ENTITLEMENT_REQUIRED",
+                    "message": "legacy server",
+                    "upgrade_to": "growth",
+                }
+            },
+        )
+        assert err.reason is None
+        assert err.is_limit is False
+        assert err.is_feature_gate is True
+
+    def test_string_detail_body_does_not_crash(self):
+        """Regression guard: `reason` must be initialised on every parse path."""
+        err = error_from_response(403, {"detail": "plain string message"})
+        assert err.message == "plain string message"
+
     def test_404_maps_to_not_found(self):
         err = error_from_response(
             404, {"error": {"code": "RESOURCE_NOT_FOUND", "message": "gone"}}

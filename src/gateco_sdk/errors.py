@@ -85,9 +85,24 @@ class ConflictError(GatecoError):
 class EntitlementError(GatecoError):
     """Raised when the API returns 403 with ENTITLEMENT_REQUIRED.
 
+    Two materially different conditions share this error:
+
+    * ``reason == "feature_not_in_plan"`` — the plan does not grant the feature.
+      Upgrading to :attr:`upgrade_to` is the only remedy.
+    * ``reason == "resource_limit_reached"`` — the plan *does* grant the feature,
+      but the org has consumed its quota. Deleting existing resources also
+      resolves it, so telling the user to upgrade would be wrong.
+
+    Check :attr:`is_limit` rather than parsing :attr:`message`.
+
     Attributes:
         upgrade_to: The plan tier that grants the required entitlement.
+        reason: Machine-readable cause. ``None`` against servers predating the
+            field, in which case the distinction is unavailable.
     """
+
+    REASON_FEATURE = "feature_not_in_plan"
+    REASON_LIMIT = "resource_limit_reached"
 
     def __init__(
         self,
@@ -95,9 +110,25 @@ class EntitlementError(GatecoError):
         *,
         code: str = "ENTITLEMENT_REQUIRED",
         upgrade_to: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(message, code=code, status_code=403)
         self.upgrade_to = upgrade_to
+        self.reason = reason
+
+    @property
+    def is_limit(self) -> bool:
+        """True when a plan *quota* was exhausted, not a missing feature."""
+        return self.reason == self.REASON_LIMIT
+
+    @property
+    def is_feature_gate(self) -> bool:
+        """True when the plan genuinely lacks the feature.
+
+        Defaults to True when ``reason`` is absent (older servers), preserving
+        the pre-``reason`` interpretation of an ENTITLEMENT_REQUIRED error.
+        """
+        return self.reason != self.REASON_LIMIT
 
 
 class RateLimitError(GatecoError):
@@ -211,6 +242,7 @@ def error_from_response(
     code = "UNKNOWN_ERROR"
     message = "An unexpected error occurred"
     upgrade_to: str | None = None
+    reason: str | None = None
 
     # FastAPI sends {"detail": {"code": "...", "message": "..."}} or {"detail": "string"}
     detail = body.get("detail") if body else None
@@ -218,6 +250,7 @@ def error_from_response(
         code = detail.get("code", code)
         message = detail.get("message", message)
         upgrade_to = detail.get("upgrade_to")
+        reason = detail.get("reason")
     elif isinstance(detail, str):
         message = detail
     elif body and isinstance(body.get("error"), dict):
@@ -225,12 +258,15 @@ def error_from_response(
         code = err.get("code", code)
         message = err.get("message", message)
         upgrade_to = err.get("upgrade_to")
+        reason = err.get("reason")
 
     # Prefer code-based lookup, fall back to status-based lookup.
     cls = _CODE_TO_ERROR.get(code) or _STATUS_TO_ERROR.get(status_code, GatecoError)
 
     if cls is EntitlementError:
-        return EntitlementError(message, code=code, upgrade_to=upgrade_to)
+        return EntitlementError(
+            message, code=code, upgrade_to=upgrade_to, reason=reason
+        )
     if cls is RateLimitError:
         return RateLimitError(message, code=code, retry_after=retry_after)
 
