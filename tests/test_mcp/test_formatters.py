@@ -8,12 +8,14 @@ from gateco_sdk._pagination import Page
 from gateco_sdk.mcp.formatters import (
     format_answer,
     format_connectors,
+    format_groups,
     format_principals,
     format_retrieval,
     format_simulation,
 )
 from gateco_sdk.types.answers import Answer, Citation
 from gateco_sdk.types.connectors import Connector
+from gateco_sdk.types.groups import PrincipalGroup
 from gateco_sdk.types.principals import Principal
 from gateco_sdk.types.retrievals import FilterResult, RetrievalOutcome, SecuredRetrieval
 from gateco_sdk.types.simulator import SimulationResult
@@ -236,3 +238,42 @@ class TestFormatPrincipals:
         out = format_principals(page)
         # Should show dashes for missing fields
         assert "—" in out
+
+
+# ---------------------------------------------------------------------------
+# format_groups
+# ---------------------------------------------------------------------------
+
+
+class TestFormatGroups:
+    def test_populated(self):
+        page = Page[PrincipalGroup](
+            items=[
+                PrincipalGroup(
+                    id="g1", name="Engineering",
+                    identity_provider_name="Okta OIN", member_count=4,
+                ),
+            ],
+            page=1, per_page=20, total=3, total_pages=1,
+        )
+        out = format_groups(page)
+        assert "## Groups (3 total, page 1/1)" in out
+        assert "Engineering" in out
+        assert "Okta OIN" in out
+        assert "| 4 |" in out
+
+    def test_empty(self):
+        page = Page[PrincipalGroup](
+            items=[], page=1, per_page=20, total=0, total_pages=1
+        )
+        out = format_groups(page)
+        assert "0 total" in out
+
+    def test_missing_optional_fields(self):
+        page = Page[PrincipalGroup](
+            items=[PrincipalGroup(id="g1")],
+            page=1, per_page=20, total=1, total_pages=1,
+        )
+        out = format_groups(page)
+        assert "—" in out
+        assert "| 0 |" in out

@@ -9,6 +9,7 @@ from __future__ import annotations
 from gateco_sdk._pagination import Page
 from gateco_sdk.types.answers import Answer
 from gateco_sdk.types.connectors import Connector
+from gateco_sdk.types.groups import PrincipalGroup
 from gateco_sdk.types.principals import Principal
 from gateco_sdk.types.retrievals import SecuredRetrieval
 from gateco_sdk.types.simulator import SimulationResult
@@ -260,6 +261,30 @@ def format_principal(principal: Principal) -> str:
 # ---------------------------------------------------------------------------
 # Principals (page)
 # ---------------------------------------------------------------------------
+
+
+def format_groups(page: Page[PrincipalGroup]) -> str:
+    """Format a ``Page[PrincipalGroup]`` as markdown.
+
+    Member counts are computed live by the server from active principals.
+    """
+    lines = [
+        f"## Groups ({page.total} total, page {page.page}/{page.total_pages})",
+        "",
+        "| Name | Source | Members | ID |",
+        "|------|--------|---------|----|",
+    ]
+
+    for g in page.items:
+        lines.append(
+            f"| {g.name or '—'} | {g.identity_provider_name or '—'} "
+            f"| {g.member_count} | {g.id} |"
+        )
+
+    if not page.items:
+        lines.append("| — | — | — | — |")
+
+    return "\n".join(lines)
 
 
 def format_principals(page: Page[Principal]) -> str:

@@ -7,6 +7,7 @@ from gateco_sdk.resources.billing import BillingResource
 from gateco_sdk.resources.connectors import ConnectorsResource
 from gateco_sdk.resources.dashboard import DashboardResource
 from gateco_sdk.resources.data_catalog import DataCatalogResource
+from gateco_sdk.resources.groups import GroupsResource
 from gateco_sdk.resources.identity_providers import IdentityProvidersResource
 from gateco_sdk.resources.ingestion import IngestionResource
 from gateco_sdk.resources.pipelines import PipelinesResource
@@ -25,6 +26,7 @@ __all__ = [
     "PoliciesResource",
     "IdentityProvidersResource",
     "PrincipalsResource",
+    "GroupsResource",
     "DataCatalogResource",
     "PipelinesResource",
     "BillingResource",

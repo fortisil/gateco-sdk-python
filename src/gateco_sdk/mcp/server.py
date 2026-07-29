@@ -9,6 +9,7 @@ from gateco_sdk.mcp.tools import (
     handle_ask,
     handle_check_access,
     handle_list_connectors,
+    handle_list_groups,
     handle_list_principals,
     handle_resolve_principal,
     handle_retrieve,
@@ -167,6 +168,27 @@ def create_server() -> FastMCP:
         """
         try:
             return await handle_list_principals(page, per_page)
+        except _ToolError as exc:
+            raise ValueError(str(exc)) from exc
+
+    @server.tool()
+    async def gateco_list_groups(
+        page: int = 1,
+        per_page: int = 20,
+        search: str | None = None,
+    ) -> str:
+        """List IdP-synced groups known to Gateco.
+
+        Returns group names, source identity providers, live member counts
+        (active members only), and IDs.
+
+        Args:
+            page: Page number (default: 1).
+            per_page: Items per page (default: 20).
+            search: Optional case-insensitive substring filter on group name.
+        """
+        try:
+            return await handle_list_groups(page, per_page, search)
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
 

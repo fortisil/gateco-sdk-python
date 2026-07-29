@@ -24,13 +24,35 @@ class PrincipalsResource:
     # List
     # ------------------------------------------------------------------
 
-    async def list(self, page: int = 1, per_page: int = 20) -> Page[Principal]:
-        """Fetch a single page of principals."""
-        raw = await self._client._request(
-            "GET",
-            "/api/principals",
-            params={"page": page, "per_page": per_page},
-        )
+    async def list(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        group: str | None = None,
+    ) -> Page[Principal]:
+        """Fetch a single page of principals.
+
+        Args:
+            page: 1-based page number.
+            per_page: Page size (server caps at 100).
+            status: Optional status filter — ``"active"``, ``"inactive"``,
+                ``"suspended"``, or ``"all"``. Omitted = active only (the
+                legacy default).
+            search: Optional case-insensitive substring filter on display
+                name or email.
+            group: Optional exact group name the principal is a member of.
+        """
+        params: dict[str, Any] = {"page": page, "per_page": per_page}
+        if status is not None:
+            params["status"] = status
+        if search is not None:
+            params["search"] = search
+        if group is not None:
+            params["group"] = group
+        raw = await self._client._request("GET", "/api/principals", params=params)
         items_raw = raw.get("data", []) if raw else []
         meta = (raw or {}).get("meta", {}).get("pagination", {})
         items = [Principal.model_validate(p) for p in items_raw]
@@ -42,12 +64,30 @@ class PrincipalsResource:
             total_pages=meta.get("total_pages", 1),
         )
 
-    def list_all(self, per_page: int = 100) -> AsyncPaginator[Principal]:
-        """Return an async iterator that lazily paginates through all principals."""
+    def list_all(
+        self,
+        per_page: int = 100,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        group: str | None = None,
+    ) -> AsyncPaginator[Principal]:
+        """Return an async iterator that lazily paginates through all principals.
+
+        Accepts the same optional ``status``/``search``/``group`` filters as
+        :meth:`list`.
+        """
 
         async def _fetch(page: int, pp: int) -> dict[str, Any]:
+            params: dict[str, Any] = {"page": page, "per_page": pp}
+            if status is not None:
+                params["status"] = status
+            if search is not None:
+                params["search"] = search
+            if group is not None:
+                params["group"] = group
             return await self._client._request(
-                "GET", "/api/principals", params={"page": page, "per_page": pp}
+                "GET", "/api/principals", params=params
             ) or {}
 
         return AsyncPaginator[Principal](_fetch, Principal, per_page=per_page)

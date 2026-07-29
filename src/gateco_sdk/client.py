@@ -21,6 +21,7 @@ from gateco_sdk.resources.ingestion import IngestionResource
 from gateco_sdk.resources.onboarding import OnboardingResource
 from gateco_sdk.resources.pipelines import PipelinesResource
 from gateco_sdk.resources.policies import PoliciesResource
+from gateco_sdk.resources.groups import GroupsResource
 from gateco_sdk.resources.principals import PrincipalsResource
 from gateco_sdk.resources.relationships import RelationshipResource
 from gateco_sdk.resources.retroactive import RetroactiveResource
@@ -79,6 +80,7 @@ class AsyncGatecoClient:
         self._policies: PoliciesResource | None = None
         self._identity_providers: IdentityProvidersResource | None = None
         self._principals: PrincipalsResource | None = None
+        self._groups: GroupsResource | None = None
         self._data_catalog: DataCatalogResource | None = None
         self._pipelines: PipelinesResource | None = None
         self._billing: BillingResource | None = None
@@ -162,6 +164,13 @@ class AsyncGatecoClient:
         if self._principals is None:
             self._principals = PrincipalsResource(self)
         return self._principals
+
+    @property
+    def groups(self) -> GroupsResource:
+        """Read-only directory of IdP-synced groups."""
+        if self._groups is None:
+            self._groups = GroupsResource(self)
+        return self._groups
 
     @property
     def data_catalog(self) -> DataCatalogResource:
@@ -466,6 +475,10 @@ class GatecoClient:
         return _SyncPrincipalsProxy(self._async_client.principals, self._run)
 
     @property
+    def groups(self) -> _SyncGroupsProxy:
+        return _SyncGroupsProxy(self._async_client.groups, self._run)
+
+    @property
     def data_catalog(self) -> _SyncDataCatalogProxy:
         return _SyncDataCatalogProxy(self._async_client.data_catalog, self._run)
 
@@ -705,8 +718,20 @@ class _SyncIdentityProvidersProxy(_SyncProxy):
 
 
 class _SyncPrincipalsProxy(_SyncProxy):
-    def list(self, page: int = 1, per_page: int = 20) -> Any:
-        return self._run(self._async.list(page, per_page))
+    def list(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        group: str | None = None,
+    ) -> Any:
+        return self._run(
+            self._async.list(
+                page, per_page, status=status, search=search, group=group
+            )
+        )
 
     def get(self, principal_id: str) -> Any:
         return self._run(self._async.get(principal_id))
@@ -725,6 +750,17 @@ class _SyncPrincipalsProxy(_SyncProxy):
                 identity_provider_id=identity_provider_id,
             )
         )
+
+
+class _SyncGroupsProxy(_SyncProxy):
+    def list(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        *,
+        search: str | None = None,
+    ) -> Any:
+        return self._run(self._async.list(page, per_page, search=search))
 
 
 class _SyncDataCatalogProxy(_SyncProxy):

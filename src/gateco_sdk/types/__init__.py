@@ -69,6 +69,7 @@ from gateco_sdk.types.policies import (
     PolicyStatus,
     PolicyType,
 )
+from gateco_sdk.types.groups import PrincipalGroup
 from gateco_sdk.types.principals import Principal, PrincipalAttributes
 from gateco_sdk.types.retroactive import (
     RetroactiveRegisterRequest,
@@ -134,6 +135,8 @@ __all__ = [
     # principals
     "Principal",
     "PrincipalAttributes",
+    # groups
+    "PrincipalGroup",
     # data catalog
     "GatedResource",
     "GatedResourceDetail",

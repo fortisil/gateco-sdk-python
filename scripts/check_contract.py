@@ -40,6 +40,7 @@ _RESOURCE_MAP: dict[str, tuple[str, str]] = {
     "api_answers": ("answers", "AnswersResource"),
     "api_audit_log": ("audit", "AuditResource"),
     "api_principals": ("principals", "PrincipalsResource"),
+    "api_groups": ("groups", "GroupsResource"),
     "api_relationships": ("relationships", "RelationshipsResource"),
     "api_identity_providers": ("identity_providers", "IdentityProvidersResource"),
     "api_api_keys": ("api_keys", "ApiKeysResource"),

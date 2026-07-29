@@ -23,6 +23,7 @@ from gateco_sdk.errors import (
 from gateco_sdk.mcp.formatters import (
     format_answer,
     format_connectors,
+    format_groups,
     format_principal,
     format_principals,
     format_retrieval,
@@ -224,6 +225,24 @@ async def handle_list_principals(
         async with _get_client() as client:
             result = await client.principals.list(page=page, per_page=per_page)
         return format_principals(result)
+    except GatecoError as exc:
+        raise _ToolError(_handle_error(exc)) from exc
+
+
+async def handle_list_groups(
+    page: int = 1,
+    per_page: int = 20,
+    search: str | None = None,
+) -> str:
+    """List IdP-synced groups with live member counts."""
+    from gateco_sdk.cli import _get_client
+
+    try:
+        async with _get_client() as client:
+            result = await client.groups.list(
+                page=page, per_page=per_page, search=search
+            )
+        return format_groups(result)
     except GatecoError as exc:
         raise _ToolError(_handle_error(exc)) from exc
 

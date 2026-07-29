@@ -21,11 +21,13 @@ from gateco_sdk.mcp.tools import (
     handle_ask,
     handle_check_access,
     handle_list_connectors,
+    handle_list_groups,
     handle_list_principals,
     handle_retrieve,
 )
 from gateco_sdk.types.answers import Answer, Citation
 from gateco_sdk.types.connectors import Connector
+from gateco_sdk.types.groups import PrincipalGroup
 from gateco_sdk.types.principals import Principal
 from gateco_sdk.types.retrievals import FilterResult, SecuredRetrieval
 from gateco_sdk.types.simulator import SimulationResult
@@ -317,3 +319,56 @@ class TestHandleListPrincipals:
         with patch("gateco_sdk.cli._get_client", return_value=client):
             with pytest.raises(_ToolError, match="Gateco error"):
                 await handle_list_principals()
+
+
+# ---------------------------------------------------------------------------
+# handle_list_groups
+# ---------------------------------------------------------------------------
+
+
+class TestHandleListGroups:
+    @pytest.mark.asyncio
+    async def test_happy_path(self):
+        client = _mock_client()
+        client.groups.list = AsyncMock(
+            return_value=Page[PrincipalGroup](
+                items=[
+                    PrincipalGroup(
+                        id="g1",
+                        name="Engineering",
+                        identity_provider_name="Okta OIN",
+                        member_count=4,
+                    ),
+                ],
+                page=1, per_page=20, total=1, total_pages=1,
+            )
+        )
+        with patch("gateco_sdk.cli._get_client", return_value=client):
+            result = await handle_list_groups(page=1, per_page=10)
+
+        assert "Engineering" in result
+        assert "Okta OIN" in result
+        assert "4" in result
+
+    @pytest.mark.asyncio
+    async def test_params_passed(self):
+        client = _mock_client()
+        client.groups.list = AsyncMock(
+            return_value=Page[PrincipalGroup](
+                items=[], page=2, per_page=5, total=0, total_pages=1,
+            )
+        )
+        with patch("gateco_sdk.cli._get_client", return_value=client):
+            await handle_list_groups(page=2, per_page=5, search="eng")
+
+        client.groups.list.assert_called_once_with(page=2, per_page=5, search="eng")
+
+    @pytest.mark.asyncio
+    async def test_generic_gateco_error(self):
+        client = _mock_client()
+        client.groups.list = AsyncMock(
+            side_effect=GatecoError("Something broke", status_code=500)
+        )
+        with patch("gateco_sdk.cli._get_client", return_value=client):
+            with pytest.raises(_ToolError, match="Gateco error"):
+                await handle_list_groups()
