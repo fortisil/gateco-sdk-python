@@ -39,6 +39,8 @@ class IngestionResource:
         metadata: dict[str, Any] | None = None,
         owner_principal_id: str | None = None,
         idempotency_key: str | None = None,
+        chunking: dict[str, Any] | None = None,
+        embedding: dict[str, Any] | None = None,
     ) -> IngestDocumentResponse:
         """Ingest a single document.
 
@@ -55,6 +57,15 @@ class IngestionResource:
             metadata: Optional arbitrary metadata dict.
             owner_principal_id: Optional owner principal for access control.
             idempotency_key: Optional idempotency key for safe retries.
+            chunking: Optional per-request chunking override, e.g.
+                {"strategy": "markdown", "chunk_size": 512, "chunk_overlap": 76}.
+                Strategies: characters, tokens, recursive, markdown. Applies to
+                this request only; the connector's pinned config is unchanged.
+            embedding: Optional embedding provider override, e.g.
+                {"provider": "openai_compatible", "model": "nomic-embed-text",
+                "base_url": "http://localhost:11434/v1"}. Providers: openai,
+                openai_compatible, cohere, voyage. API keys are never sent in
+                requests; they resolve server-side from provider env vars.
         """
         body: dict[str, Any] = {
             "connector_id": connector_id,
@@ -75,6 +86,10 @@ class IngestionResource:
             body["owner_principal_id"] = owner_principal_id
         if idempotency_key is not None:
             body["idempotency_key"] = idempotency_key
+        if chunking is not None:
+            body["chunking"] = chunking
+        if embedding is not None:
+            body["embedding"] = embedding
 
         data = await self._client._request("POST", "/api/v1/ingest", json=body)
         return IngestDocumentResponse.model_validate(data)
@@ -85,6 +100,8 @@ class IngestionResource:
         records: list[dict[str, Any]],
         *,
         idempotency_key: str | None = None,
+        chunking: dict[str, Any] | None = None,
+        embedding: dict[str, Any] | None = None,
     ) -> BatchIngestResponse:
         """Ingest a batch of documents in a single request.
 
@@ -104,6 +121,10 @@ class IngestionResource:
         }
         if idempotency_key is not None:
             body["idempotency_key"] = idempotency_key
+        if chunking is not None:
+            body["chunking"] = chunking
+        if embedding is not None:
+            body["embedding"] = embedding
 
         data = await self._client._request("POST", "/api/v1/ingest/batch", json=body)
         return BatchIngestResponse.model_validate(data)

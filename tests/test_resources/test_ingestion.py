@@ -31,6 +31,64 @@ class TestIngestDocument:
         assert len(resp.vector_ids) == 4
 
     @pytest.mark.asyncio
+    async def test_byoe_ingest_executes_clean_body_path(self, authed_client, mock_api):
+        """document_byoe body construction has no chunking/embedding params.
+
+        Regression guard: a bad edit once injected `if chunking is not None`
+        into document_byoe, which has no such parameter — every BYOE ingest
+        raised NameError client-side.
+        """
+        route = mock_api.post("/api/v1/ingest").respond(
+            200,
+            json={
+                "status": "success",
+                "resource_id": "r-byoe",
+                "external_resource_id": "doc-byoe",
+                "chunk_count": 1,
+                "vector_ids": ["v1"],
+            },
+        )
+        resp = await authed_client.ingest.document_byoe(
+            "c1",
+            "doc-byoe",
+            [{"text": "chunk text", "vector": [0.1, 0.2]}],
+        )
+        assert resp.status == "success"
+        import json as _json
+
+        sent = _json.loads(route.calls[0].request.content)
+        assert "chunking" not in sent
+        assert "embedding" not in sent
+        assert sent["pre_embedded_chunks"][0]["vector"] == [0.1, 0.2]
+
+    @pytest.mark.asyncio
+    async def test_document_chunking_and_embedding_overrides_sent(
+        self, authed_client, mock_api
+    ):
+        route = mock_api.post("/api/v1/ingest").respond(
+            200,
+            json={
+                "status": "success",
+                "resource_id": "r-ovr",
+                "external_resource_id": "doc-ovr",
+                "chunk_count": 1,
+                "vector_ids": ["v1"],
+            },
+        )
+        await authed_client.ingest.document(
+            "c1",
+            "doc-ovr",
+            "content",
+            chunking={"strategy": "markdown", "chunk_size": 512, "chunk_overlap": 76},
+            embedding={"provider": "cohere", "model": "embed-v4.0"},
+        )
+        import json as _json
+
+        sent = _json.loads(route.calls[0].request.content)
+        assert sent["chunking"]["strategy"] == "markdown"
+        assert sent["embedding"]["provider"] == "cohere"
+
+    @pytest.mark.asyncio
     async def test_ingest_with_all_metadata(self, authed_client, mock_api):
         mock_api.post("/api/v1/ingest").respond(
             200,

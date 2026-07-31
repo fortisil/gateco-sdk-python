@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.7.0] - 2026-07-31
+
+### Added
+- `chunking` override on ingest document/batch: `{strategy, chunk_size, chunk_overlap}` with
+  strategies `characters`, `tokens`, `recursive`, `markdown` (heading-aware with heading-path
+  context prefixes). Applies per request; each connector pins its default chunking generation
+  write-once on first ingest (existing connectors keep v1 characters, fresh connectors get v2
+  markdown at 512 tokens / 15% overlap).
+- `embedding` override on ingest document/batch: `{provider, model, dimensions, base_url}` with
+  providers `openai`, `openai_compatible` (any OpenAI-wire endpoint: Ollama, TEI, vLLM — keeps
+  embeddings fully self-hosted), `cohere`, and `voyage`. Requests never carry API keys; keys
+  resolve server-side from provider env vars. The connector records the resolved provider profile
+  and server-side query embedding follows it automatically.
+
+### Changed
+- Server-side: the default file-extraction backend is now self-hosted Docling (PDF/DOCX/PPTX/
+  images parse locally with no content egress). LlamaParse cloud extraction is an explicit
+  opt-in via EXTRACTION_BACKEND=llama_parse.
+
 ## [1.6.0] - 2026-07-31
 
 ### Added
