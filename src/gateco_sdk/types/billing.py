@@ -27,6 +27,7 @@ class PlanFeatures(BaseModel):
     sso: bool = False
     batch_ingestion: bool = False
     async_ingestion: bool = False
+    source_connectors: bool = False
 
 
 class Plan(BaseModel):
