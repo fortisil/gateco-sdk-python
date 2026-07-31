@@ -26,6 +26,7 @@ class PlanFeatures(BaseModel):
     custom_roles: bool = False
     sso: bool = False
     batch_ingestion: bool = False
+    async_ingestion: bool = False
 
 
 class Plan(BaseModel):
