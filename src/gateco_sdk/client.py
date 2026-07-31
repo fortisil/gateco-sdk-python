@@ -18,6 +18,7 @@ from gateco_sdk.resources.dashboard import DashboardResource
 from gateco_sdk.resources.data_catalog import DataCatalogResource
 from gateco_sdk.resources.identity_providers import IdentityProvidersResource
 from gateco_sdk.resources.ingestion import IngestionResource
+from gateco_sdk.resources.source_connections import SourceConnectionsResource
 from gateco_sdk.resources.onboarding import OnboardingResource
 from gateco_sdk.resources.pipelines import PipelinesResource
 from gateco_sdk.resources.policies import PoliciesResource
@@ -75,6 +76,7 @@ class AsyncGatecoClient:
         self._auth: AuthResource | None = None
         self._connectors: ConnectorsResource | None = None
         self._ingest: IngestionResource | None = None
+        self._sources: SourceConnectionsResource | None = None
         self._onboarding: OnboardingResource | None = None
         self._retrievals: RetrievalsResource | None = None
         self._policies: PoliciesResource | None = None
@@ -122,6 +124,13 @@ class AsyncGatecoClient:
         if self._connectors is None:
             self._connectors = ConnectorsResource(self)
         return self._connectors
+
+    @property
+    def sources(self) -> SourceConnectionsResource:
+        """Source connections (Growth+): document sources with ACL import."""
+        if self._sources is None:
+            self._sources = SourceConnectionsResource(self)
+        return self._sources
 
     @property
     def ingest(self) -> IngestionResource:

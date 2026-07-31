@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.8.0] - 2026-07-31
+
+### Added
+- Async ingestion jobs (Team plan and above): enqueue document/batch ingestion as background
+  jobs with progress tracking, retries, and dead-lettering. Python: `client.ingest.jobs`
+  (`enqueue/get/list/cancel/wait_for`); TypeScript: `client.ingest.jobs`
+  (`enqueue/get/list/cancel/waitFor`).
+- Resource tombstones: `client.ingest.delete_resource()` / `deleteResource()` removes an
+  ingested resource's vectors, registry chunks, and gated resource.
+- Source connections (Growth plan and above): `client.sources` — connect Google Drive,
+  SharePoint, Confluence, or Notion; sync documents AND their permissions. Includes
+  `acl_coverage()` / `aclCoverage()` reporting matched/unmatched principals, and
+  `PlanFeatures.async_ingestion` / `PlanFeatures.source_connectors` typed fields.
+
+### Changed
+- Server-side: pipelines run for real (`POST /api/pipelines/{id}/run` enqueues a source-sync
+  job group; the former 501 is gone); re-syncing unchanged content skips embedding entirely
+  (position-keyed pre-embedding dedup); imported source ACLs create REBAC viewer relationships
+  and a DRAFT policy that admins review and activate.
+
 ## [1.7.0] - 2026-07-31
 
 ### Added

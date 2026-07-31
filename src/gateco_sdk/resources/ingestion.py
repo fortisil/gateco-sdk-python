@@ -25,6 +25,11 @@ class IngestionResource:
 
     def __init__(self, client: AsyncGatecoClient) -> None:
         self._client = client
+        from gateco_sdk.resources.ingestion_jobs import IngestionJobsResource
+
+        #: Async ingestion jobs (Team+): client.ingest.jobs.enqueue(...)
+        self.jobs = IngestionJobsResource(client)
+
 
     async def document(
         self,
@@ -270,3 +275,13 @@ class IngestionResource:
                 fh.close()
 
         return BatchFileIngestResponse.model_validate(data)
+
+    async def delete_resource(
+        self, connector_id: str, external_resource_id: str,
+    ) -> dict:
+        """Tombstone an ingested resource: vectors + registry + soft delete."""
+        return await self._client._request(
+            "DELETE",
+            f"/api/v1/ingest/resources/{external_resource_id}",
+            params={"connector_id": connector_id},
+        )
