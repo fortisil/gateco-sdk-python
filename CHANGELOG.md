@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.0] - 2026-07-31
+
+### Added
+- `PlanLimits.ingested_documents` and `PlanFeatures.batch_ingestion` typed fields, matching the new
+  backend plan catalog keys (monthly ingested-document limits: free 100 / team 10k / growth 100k /
+  enterprise unlimited).
+- Docs: `client.ingest.batch()` requires the `batch_ingestion` feature (Team plan and above);
+  free-plan orgs receive `EntitlementError` with `reason="feature_not_in_plan"`.
+
+### Changed
+- Server-side (no client code change needed): all ingestion endpoints now accept `X-API-Key`
+  authentication in addition to JWT, batch ingestion coalesces embedding calls (large batches are
+  significantly faster), and re-ingesting a document that produces fewer chunks now prunes the stale
+  chunks from both the registry and the vector DB.
+
 ## [1.5.1] - 2026-07-28
 
 No functional changes. Released to verify the switch to Trusted Publishing (OIDC) — this version was

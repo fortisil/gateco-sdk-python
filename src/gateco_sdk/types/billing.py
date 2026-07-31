@@ -14,6 +14,7 @@ class PlanLimits(BaseModel):
     connectors: int | None = None
     policies: int | None = None
     identity_providers: int | None = None
+    ingested_documents: int | None = None
 
 
 class PlanFeatures(BaseModel):
@@ -24,6 +25,7 @@ class PlanFeatures(BaseModel):
     access_simulator: bool = False
     custom_roles: bool = False
     sso: bool = False
+    batch_ingestion: bool = False
 
 
 class Plan(BaseModel):
