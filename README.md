@@ -6,6 +6,8 @@ Official Python client for the [Gateco](https://gateco.ai) API — permission-aw
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![GitHub](https://img.shields.io/badge/GitHub-gateco--sdk--python-blue)](https://github.com/fortisil/gateco-sdk-python)
 
+<!-- mcp-name: ai.gateco/gateco -->
+
 ---
 
 ## The problem it solves

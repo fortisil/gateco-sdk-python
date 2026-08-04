@@ -1,0 +1,48 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "ai.gateco/gateco",
+  "title": "Gateco",
+  "description": "Permission-aware retrieval for AI systems: policy-enforced, identity-based access to organizational knowledge with audit trails. Retrieve, ask grounded questions, and resolve principals against your Gateco tenant.",
+  "version": "1.8.1",
+  "websiteUrl": "https://www.gateco.ai",
+  "repository": {
+    "url": "https://github.com/fortisil/gateco-sdk-python",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "gateco",
+      "version": "1.8.1",
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "gateco[mcp]"
+        },
+        {
+          "type": "positional",
+          "value": "gateco-mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "GATECO_API_KEY",
+          "description": "Gateco API key (create one in the Gateco dashboard under Settings > API Keys)",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "GATECO_BASE_URL",
+          "description": "Gateco API base URL. Defaults to https://api.gateco.ai; set only for self-hosted or staging deployments.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}

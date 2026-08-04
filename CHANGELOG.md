@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1] - 2026-08-04
+
+### Added
+- MCP registry listing metadata: `server.json` for the official MCP registry
+  (server name `ai.gateco/gateco`) and the PyPI ownership marker in the README.
+  No code changes.
+
 ## [1.8.0] - 2026-07-31
 
 ### Added
