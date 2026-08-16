@@ -49,8 +49,9 @@ class TestFormatRetrieval:
         assert "doc-001" in out
         assert "0.92" in out
         assert "Allowed text here" in out
-        # Denied content should NOT appear in allowed table
-        assert "Secret" not in out.split("### Denial Summary")[0] or "Secret" not in out
+        # Denied content must NOT appear anywhere in MCP output (product
+        # invariant: only denial reasons and counts are exposed)
+        assert "Secret" not in out
         assert "Confidential Data Policy" in out
 
     def test_with_outcomes_fallback(self):
