@@ -17,38 +17,52 @@ import re
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[4]
-_OPENAPI_PATH = _REPO_ROOT / "packages" / "contracts" / "openapi.json"
+# scripts/ -> sdk-python/ -> packages/ -> gateco/ (the monorepo root that holds packages/)
+_MONOREPO_ROOT = Path(__file__).resolve().parents[3]
+_OPENAPI_PATH = _MONOREPO_ROOT / "packages" / "contracts" / "openapi.json"
 _SDK_SRC = Path(__file__).resolve().parents[2] / "src"
 
-# Map operationId path segment → (SDK resource attribute name, resource class name)
-_RESOURCE_MAP: dict[str, tuple[str, str]] = {
-    "api_admin": None,          # admin routes not in SDK
-    "db_health": None,          # infra health, not in SDK
-    "health_db": None,
-    "api_auth": ("auth", "AuthResource"),
-    "api_plans": ("billing", "BillingResource"),
-    "api_checkout": ("billing", "BillingResource"),
-    "api_billing": ("billing", "BillingResource"),
-    "api_webhooks": None,       # webhook receiver, not in SDK
-    "api_connectors": ("connectors", "ConnectorsResource"),
-    "api_ingestion": ("ingestion", "IngestionResource"),
-    "api_data_catalog": ("data_catalog", "DataCatalogResource"),
-    "api_policies": ("policies", "PoliciesResource"),
-    "api_retrievals": ("retrievals", "RetrievalsResource"),
-    "api_simulator": ("simulator", "SimulatorResource"),
-    "api_answers": ("answers", "AnswersResource"),
-    "api_audit_log": ("audit", "AuditResource"),
-    "api_principals": ("principals", "PrincipalsResource"),
-    "api_groups": ("groups", "GroupsResource"),
-    "api_relationships": ("relationships", "RelationshipsResource"),
-    "api_identity_providers": ("identity_providers", "IdentityProvidersResource"),
-    "api_api_keys": ("api_keys", "ApiKeysResource"),
-    "api_users": ("users", "UsersResource"),
-    "api_organization": ("users", "UsersResource"),
-    "api_onboarding": ("onboarding", "OnboardingResource"),
-    "api_scim": None,           # SCIM is server-side only
-    "api_pipelines": ("pipelines", "PipelinesResource"),
+# URL prefix -> (client attribute, resource class, module under gateco_sdk.resources),
+# or None when the prefix is deliberately outside the SDK (say why). Longest prefix
+# wins. A prefix that appears in the spec and is missing here FAILS the check, so a
+# new router cannot slip past unmapped.
+_RESOURCE_MAP: dict[str, tuple[str, str, str] | None] = {
+    "/": None,                           # root banner
+    "/health": None,                     # liveness / readiness probes
+    "/api/admin": None,                  # X-Admin-Token setup console, not a customer API
+    "/api/platform": None,               # platform-admin console (require_platform_admin)
+    "/api/webhooks": None,               # Stripe calls us
+    "/api/marketplace": None,            # AWS Marketplace calls us
+    "/api/scim": None,                   # the IdP calls us
+    "/api/benchmark": None,              # Performance Self-Test: in-app, login-gated by ruling (2026-08-31)
+    "/api/capabilities": None,           # public capability matrix consumed by the app
+    "/api/auth": ("auth", "AuthResource", "auth"),
+    "/api/plans": ("billing", "BillingResource", "billing"),
+    "/api/checkout": ("billing", "BillingResource", "billing"),
+    "/api/billing": ("billing", "BillingResource", "billing"),
+    "/api/connectors": ("connectors", "ConnectorsResource", "connectors"),
+    "/api/v1/ingest/jobs": ("ingest.jobs", "IngestionJobsResource", "ingestion_jobs"),
+    "/api/v1/ingest": ("ingest", "IngestionResource", "ingestion"),
+    "/api/v1/resources": ("data_catalog", "DataCatalogResource", "data_catalog"),
+    "/api/v1/retroactive-register": ("retroactive", "RetroactiveResource", "retroactive"),
+    "/api/data-catalog": ("data_catalog", "DataCatalogResource", "data_catalog"),
+    "/api/policies": ("policies", "PoliciesResource", "policies"),
+    "/api/retrievals": ("retrievals", "RetrievalsResource", "retrievals"),
+    "/api/simulator": ("simulator", "SimulatorResource", "simulator"),
+    "/api/answers": ("answers", "AnswersResource", "answers"),
+    "/api/audit-log": ("audit", "AuditResource", "audit"),
+    "/api/principals": ("principals", "PrincipalsResource", "principals"),
+    "/api/groups": ("groups", "GroupsResource", "groups"),
+    "/api/relationships": ("relationships", "RelationshipResource", "relationships"),
+    "/api/identity-providers": ("identity_providers", "IdentityProvidersResource", "identity_providers"),
+    "/api/api-keys": ("api_keys", "ApiKeysResource", "api_keys"),
+    "/api/users": ("users", "UsersResource", "users"),
+    "/api/organization": ("users", "UsersResource", "users"),
+    "/api/team": ("users", "UsersResource", "users"),
+    "/api/onboarding": ("onboarding", "OnboardingResource", "onboarding"),
+    "/api/pipelines": ("pipelines", "PipelinesResource", "pipelines"),
+    "/api/source-connections": ("sources", "SourceConnectionsResource", "source_connections"),
+    "/api/dashboard": ("dashboard", "DashboardResource", "dashboard"),
 }
 
 # operationId prefixes (before the resource segment) to skip
@@ -74,46 +88,100 @@ _SKIP_OPERATION_IDS: set[str] = {
 }
 
 
-def _resolve_resource(path: str) -> tuple[str, str] | None:
-    """Map an API path to the (resource_attr, class_name) for the SDK."""
-    path = path.lstrip("/").replace("-", "_").replace("/", "_")
-    for prefix, mapping in _RESOURCE_MAP.items():
-        if path.startswith(prefix.lstrip("/")):
-            return mapping
-    return None
+_UNMAPPED = object()
+
+
+def _resolve_resource(path: str):
+    """(mapping, url_prefix) for the longest matching prefix; _UNMAPPED when none matches."""
+    for prefix in sorted(_RESOURCE_MAP, key=len, reverse=True):
+        if path == prefix or path.startswith(prefix.rstrip("/") + "/"):
+            return _RESOURCE_MAP[prefix], prefix
+    return _UNMAPPED, ""
 
 
 def _derive_method_name(operation_id: str) -> str:
-    """Derive a snake_case SDK method name from an operationId.
+    """The FastAPI function name inside an operationId.
 
-    FastAPI operationIds look like: ``list_connectors_api_connectors_get``
-    We want the human-readable prefix: ``list_connectors``.
+    FastAPI operationIds look like ``list_connectors_api_connectors_get``; we
+    want ``list_connectors``.
     """
-    # Strip the trailing ``_api_..._<method>`` suffix
-    cleaned = re.sub(r"_api_.*$", "", operation_id)
-    return cleaned
+    return re.sub(r"_api_.*$", "", operation_id)
 
 
-def _get_sdk_resource_methods(resource_attr: str, class_name: str) -> set[str]:
-    """Import the SDK resource class and return its public async method names."""
+#: Route function name -> SDK method, where the SDK chose a different name on
+#: purpose. Keep this list short and explain every entry.
+_EXPLICIT_METHOD: dict[str, str] = {
+    "deactivate_principal": "delete",      # SDK mirrors the HTTP verb; server soft-deactivates
+    "list_runs": "get_runs",               # pipelines.get_runs(pipeline_id)
+    "export_audit_log": "export_csv",      # audit.export_csv(...)
+    "onboarding_status": "status",         # onboarding.status()
+    "dismiss_onboarding": "dismiss",       # onboarding.dismiss()
+    "list_plans": "get_plans",             # billing.get_plans()
+    "ingest_document": "document",         # ingest.document(...)
+    "retroactive_register": "register",    # retroactive.register(...)
+}
+
+#: Verbs the SDK spells differently from the route function.
+_VERB_SYNONYMS: dict[str, set[str]] = {
+    "deactivate": {"delete"},
+    "remove": {"delete"},
+    "patch": {"update"},
+    "fetch": {"get"},
+}
+
+#: Operations the SDK deliberately does not expose, with the reason. A gap
+#: that is not here fails the check, so new endpoints get an SDK method or an
+#: entry with a reason, never silence.
+KNOWN_GAPS: dict[str, str] = {
+    "stream_audit_log": "server-sent events stream; SDKs expose list/export instead",
+    "submit_profile": "onboarding profile form is app-only (plan Phase 6 decides)",
+    "update_pipeline": "pipelines are app-managed in v1; SDK exposes create/get/list/run history",
+    "run_pipeline": "pipelines are app-managed in v1; scheduled by the worker",
+    "get_db_schema": "Search Config dialog helper; SDK method lands in plan Phase 5 (SDK parity)",
+    "get_preflight": "connector preflight is app-only until plan Phase 5 (SDK parity)",
+    "get_activation_stats": "dashboard activation card; app-only",
+    "list_team_invites": "team invites are managed in the app (Organization settings)",
+    "create_team_invite": "team invites are managed in the app (Organization settings)",
+    "revoke_team_invite": "team invites are managed in the app (Organization settings)",
+}
+
+
+def _static_segments(path: str, resource_prefix: str) -> list[str]:
+    """Literal path segments after the resource root, e.g. ['resolve'] or ['runs']."""
+    rest = path.removeprefix(resource_prefix)
+    return [seg.replace("-", "_") for seg in rest.strip("/").split("/") if seg and not seg.startswith("{")]
+
+
+def _covered(fn: str, path: str, resource_prefix: str, sdk_methods: set[str]) -> bool:
+    """Does the SDK resource expose this route?
+
+    1. An explicit mapping wins.
+    2. A sub-resource route (``/principals/resolve``, ``/pipelines/{id}/runs``)
+       needs a method whose name contains every literal segment.
+    3. A root route (list/create/get/update/delete on the resource itself)
+       needs a method named after the verb, or a listed synonym.
+    """
+    if fn in _EXPLICIT_METHOD:
+        return _EXPLICIT_METHOD[fn] in sdk_methods
+    segments = _static_segments(path, resource_prefix)
+    if segments:
+        # every token of every literal segment, singular or plural, in one method name
+        tokens = [t.rstrip("s") for seg in segments for t in seg.split("_") if t]
+        return any(all(t in m for t in tokens) for m in sdk_methods)
+    verb = fn.split("_")[0]
+    wanted = {verb} | _VERB_SYNONYMS.get(verb, set())
+    return bool(wanted & sdk_methods)
+
+
+def _get_sdk_resource_methods(class_name: str, module: str) -> set[str]:
+    """Public method names of the named resource class."""
     sys.path.insert(0, str(_SDK_SRC))
     try:
-        mod = importlib.import_module(f"gateco_sdk.resources.{resource_attr.rstrip('s').replace('_', '_')}")
-    except ModuleNotFoundError:
-        try:
-            mod = importlib.import_module(f"gateco_sdk.resources.{resource_attr}")
-        except ModuleNotFoundError:
-            return set()
+        mod = importlib.import_module(f"gateco_sdk.resources.{module}")
     finally:
         sys.path.pop(0)
-
-    for name, obj in inspect.getmembers(mod, inspect.isclass):
-        if name == class_name or name.endswith("Resource"):
-            return {
-                m for m, _ in inspect.getmembers(obj, predicate=inspect.isfunction)
-                if not m.startswith("_")
-            }
-    return set()
+    cls = getattr(mod, class_name)
+    return {m for m, _ in inspect.getmembers(cls, predicate=inspect.isfunction) if not m.startswith("_")}
 
 
 def main() -> int:
@@ -126,6 +194,7 @@ def main() -> int:
         spec = json.load(f)
 
     gaps: list[str] = []
+    known: list[str] = []
     checked = 0
     skipped = 0
 
@@ -140,42 +209,38 @@ def main() -> int:
                 skipped += 1
                 continue
 
-            resource_info = _resolve_resource(path)
-            if resource_info is None:
+            mapping, url_prefix = _resolve_resource(path)
+            if mapping is _UNMAPPED:
+                gap = f"UNMAPPED PREFIX: {path} — add it to _RESOURCE_MAP (with a reason if it is not for the SDK)"
+                if gap not in gaps:
+                    gaps.append(gap)
+                continue
+            if mapping is None:
                 skipped += 1
                 continue
-
-            resource_attr, class_name = resource_info
+            resource_attr, class_name, module = mapping
             method_name = _derive_method_name(operation_id)
             checked += 1
-
             if resource_attr not in _resource_method_cache:
-                _resource_method_cache[resource_attr] = _get_sdk_resource_methods(resource_attr, class_name)
-
+                _resource_method_cache[resource_attr] = _get_sdk_resource_methods(class_name, module)
             sdk_methods = _resource_method_cache[resource_attr]
             if not sdk_methods:
-                # Resource module missing entirely — report once
                 gap = f"MISSING RESOURCE MODULE: {resource_attr} (class={class_name}) — needed for operationId={operation_id}"
                 if gap not in gaps:
                     gaps.append(gap)
                 continue
-
-            # Allow partial name matching — SDK methods don't have to be named exactly
-            # the same as the operationId prefix, but must be present in the class
-            # Heuristic: check if any SDK method name contains the core action words
-            action_words = {w for w in method_name.split("_") if len(w) > 2}
-            found = any(
-                all(word in sdk_method for word in action_words)
-                for sdk_method in sdk_methods
-            ) or method_name in sdk_methods
-
-            if not found:
-                gaps.append(
-                    f"MISSING: {http_method.upper()} {path} → operationId={operation_id} "
-                    f"→ expected ~{method_name} in {class_name} (have: {sorted(sdk_methods)[:5]}...)"
-                )
-
-    print(f"Contract check: {checked} operations checked, {skipped} skipped")
+            if _covered(method_name, path, url_prefix, sdk_methods):
+                continue
+            if method_name in KNOWN_GAPS:
+                known.append(f"{http_method.upper()} {path}: {KNOWN_GAPS[method_name]}")
+                continue
+            gaps.append(
+                f"MISSING: {http_method.upper()} {path} → operationId={operation_id} "
+                f"→ expected ~{method_name} in {class_name} (have: {sorted(sdk_methods)})"
+            )
+    print(f"Contract check: {checked} operations checked, {skipped} skipped, {len(known)} known gaps")
+    for k in known:
+        print(f"  · known gap: {k}")
     if gaps:
         print(f"\n{len(gaps)} gap(s) found:\n")
         for gap in gaps:
