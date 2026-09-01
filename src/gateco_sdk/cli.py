@@ -121,16 +121,44 @@ def _get_client() -> Any:
     raw_base = str(base_url)
     raw_base = raw_base.removesuffix("/api")
 
-    client = AsyncGatecoClient(raw_base, api_key=api_key)
-
-    # If we have JWT tokens, inject them into the token manager.
+    # If we have JWT tokens, inject them into the token manager and persist
+    # whatever the SDK's auto-refresh replaces them with. Before this the CLI
+    # refreshed in memory only, so every invocation re-used the refresh token
+    # until it expired at seven days and then failed with a bare JSON error.
     access = creds.get("access_token")
     if access and not api_key:
-        client._token_manager.set_tokens(
-            access, creds.get("refresh_token")
-        )
+        client = _persisting_client_class()(raw_base, base_url_for_file=str(base_url))
+        client._token_manager.set_tokens(access, creds.get("refresh_token"))
+        return client
 
-    return client
+    return AsyncGatecoClient(raw_base, api_key=api_key)
+
+
+def _persisting_client_class() -> type:
+    """Build (once) an AsyncGatecoClient subclass that writes refreshed tokens back to disk."""
+    from gateco_sdk.client import AsyncGatecoClient
+
+    class _PersistingClient(AsyncGatecoClient):
+        def __init__(self, base_url: str, *, base_url_for_file: str, **kwargs: Any) -> None:
+            super().__init__(base_url, **kwargs)
+            self._base_url_for_file = base_url_for_file
+            self._loaded_tokens: tuple[str | None, str | None] | None = None
+
+        async def __aenter__(self):  # type: ignore[override]
+            self._loaded_tokens = (
+                self._token_manager.access_token, self._token_manager.refresh_token
+            )
+            return await super().__aenter__()
+
+        async def __aexit__(self, *exc_info: object) -> None:  # type: ignore[override]
+            try:
+                await super().__aexit__(*exc_info)
+            finally:
+                current = (self._token_manager.access_token, self._token_manager.refresh_token)
+                if current[0] and current != self._loaded_tokens:
+                    _save_credentials(current[0], current[1], self._base_url_for_file)
+
+    return _PersistingClient
 
 
 def _run(coro: Any) -> Any:
@@ -897,6 +925,13 @@ def main() -> None:
     except KeyboardInterrupt:
         sys.exit(130)
     except Exception as exc:
+        from gateco_sdk.errors import AuthenticationError
+
+        if isinstance(exc, AuthenticationError):
+            _error(
+                f"{exc}. Your session is missing, expired or revoked: run `gateco login` "
+                "again, or set GATECO_API_KEY to a key with the scopes this command needs."
+            )
         _error(str(exc))
 
 
