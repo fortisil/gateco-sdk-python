@@ -412,6 +412,8 @@ class GatecoClient:
         base_url: str | None = None,
         *,
         api_key: str | None = None,
+        access_token: str | None = None,
+        refresh_token: str | None = None,
         timeout: float = 30.0,
         max_retries: int = 2,
         retry_backoff_factor: float = 0.5,
@@ -419,6 +421,8 @@ class GatecoClient:
         self._async_client = AsyncGatecoClient(
             resolve_base_url(base_url),
             api_key=api_key,
+            access_token=access_token,
+            refresh_token=refresh_token,
             timeout=timeout,
             max_retries=max_retries,
             retry_backoff_factor=retry_backoff_factor,
@@ -472,6 +476,14 @@ class GatecoClient:
     @property
     def ingest(self) -> _SyncIngestionProxy:
         return _SyncIngestionProxy(self._async_client.ingest, self._run)
+
+    @property
+    def sources(self) -> _SyncSourcesProxy:
+        return _SyncSourcesProxy(self._async_client.sources, self._run)
+
+    @property
+    def users(self) -> _SyncUsersProxy:
+        return _SyncUsersProxy(self._async_client.users, self._run)
 
     @property
     def onboarding(self) -> _SyncOnboardingProxy:
@@ -554,6 +566,22 @@ class GatecoClient:
 # ======================================================================
 
 
+class _SyncPaginator:
+    """Synchronous iterator over an :class:`AsyncPaginator` (what ``list_all`` returns)."""
+
+    def __init__(self, paginator: Any, runner: Any) -> None:
+        self._paginator = paginator
+        self._run = runner
+
+    def __iter__(self) -> Any:
+        it = self._paginator.__aiter__()
+        while True:
+            try:
+                yield self._run(it.__anext__())
+            except StopAsyncIteration:
+                return
+
+
 class _SyncProxy:
     """Base class for synchronous resource proxies."""
 
@@ -595,6 +623,9 @@ class _SyncAuthProxy(_SyncProxy):
 
     def logout(self) -> None:
         return self._run(self._async.logout())
+    def exchange_oauth_code(self, code: str) -> Any:
+        """Exchange a one-time OAuth authorization code for tokens."""
+        return self._run(self._async.exchange_oauth_code(code))
 
 
 class _SyncConnectorsProxy(_SyncProxy):
@@ -639,6 +670,9 @@ class _SyncConnectorsProxy(_SyncProxy):
 
     def apply_suggestions(self, connector_id: str, suggestions: list) -> Any:
         return self._run(self._async.apply_suggestions(connector_id, suggestions))
+    def list_all(self, per_page: int = 100) -> Any:
+        """Return an async iterator that lazily paginates through all connectors."""
+        return _SyncPaginator(self._async.list_all(per_page), self._run)
 
 
 class _SyncIngestionProxy(_SyncProxy):
@@ -676,6 +710,16 @@ class _SyncIngestionProxy(_SyncProxy):
         **kwargs: Any,
     ) -> Any:
         return self._run(self._async.files(connector_id, file_paths, **kwargs))
+    def delete_resource(self, connector_id: str, external_resource_id: str) -> Any:
+        """Tombstone an ingested resource: vectors + registry + soft delete."""
+        return self._run(self._async.delete_resource(connector_id, external_resource_id))
+    def document_byoe(self, connector_id: str, external_resource_id: str, pre_embedded_chunks: list[dict[str, Any]], *, classification: str | None = None, sensitivity: str | None = None, metadata: dict[str, Any] | None = None, idempotency_key: str | None = None) -> Any:
+        """Ingest a document with pre-embedded chunks (Bring Your Own Embeddings)."""
+        return self._run(self._async.document_byoe(connector_id, external_resource_id, pre_embedded_chunks, classification=classification, sensitivity=sensitivity, metadata=metadata, idempotency_key=idempotency_key))
+
+    @property
+    def jobs(self) -> _SyncIngestJobsProxy:
+        return _SyncIngestJobsProxy(self._async.jobs, self._run)
 
 
 class _SyncRetrievalsProxy(_SyncProxy):
@@ -687,6 +731,12 @@ class _SyncRetrievalsProxy(_SyncProxy):
 
     def get(self, retrieval_id: str) -> Any:
         return self._run(self._async.get(retrieval_id))
+    def filter(self, *, principal_id: str, connector_id: str, candidates: list[dict[str, Any]], include_trace: bool = False) -> Any:
+        """Apply policy filtering to externally-sourced retrieval candidates."""
+        return self._run(self._async.filter(principal_id=principal_id, connector_id=connector_id, candidates=candidates, include_trace=include_trace))
+    def list_all(self, per_page: int = 100, **filters: Any) -> Any:
+        """Return an async iterator over all retrieval records."""
+        return _SyncPaginator(self._async.list_all(per_page, **filters), self._run)
 
 
 class _SyncPoliciesProxy(_SyncProxy):
@@ -716,6 +766,21 @@ class _SyncPoliciesProxy(_SyncProxy):
 
     def archive(self, policy_id: str) -> Any:
         return self._run(self._async.archive(policy_id))
+    def create_from_template(self, template_id: str, placeholder_values: dict[str, str], *, name: str | None = None) -> Any:
+        """Create a draft policy from a template (Team+ only)."""
+        return self._run(self._async.create_from_template(template_id, placeholder_values, name=name))
+    def list_all(self, per_page: int = 100) -> Any:
+        """Return an async iterator that lazily paginates through all policies."""
+        return _SyncPaginator(self._async.list_all(per_page), self._run)
+    def list_templates(self) -> Any:
+        """List the static catalog of policy templates (all plans)."""
+        return self._run(self._async.list_templates())
+    def list_versions(self, policy_id: str) -> Any:
+        """List all saved versions of a policy (Team+ only)."""
+        return self._run(self._async.list_versions(policy_id))
+    def restore_version(self, policy_id: str, version: int) -> Any:
+        """Restore a policy to a saved version (Team+ only)."""
+        return self._run(self._async.restore_version(policy_id, version))
 
 
 class _SyncIdentityProvidersProxy(_SyncProxy):
@@ -736,6 +801,21 @@ class _SyncIdentityProvidersProxy(_SyncProxy):
 
     def sync(self, idp_id: str) -> Any:
         return self._run(self._async.sync(idp_id))
+    def apply_policy_suggestions(self, idp_id: str, suggestion_ids: list[str]) -> Any:
+        """Apply accepted policy suggestions as draft policies (Growth+ only)."""
+        return self._run(self._async.apply_policy_suggestions(idp_id, suggestion_ids))
+    def generate_scim_token(self, idp_id: str) -> Any:
+        """Generate a SCIM bearer token for an IDP (Enterprise only)."""
+        return self._run(self._async.generate_scim_token(idp_id))
+    def list_all(self, per_page: int = 100) -> Any:
+        """Return an async iterator that lazily paginates through all identity providers."""
+        return _SyncPaginator(self._async.list_all(per_page), self._run)
+    def revoke_scim_token(self, idp_id: str) -> Any:
+        """Revoke the current SCIM token for an identity provider."""
+        return self._run(self._async.revoke_scim_token(idp_id))
+    def suggest_policies(self, idp_id: str) -> Any:
+        """Generate conservative policy suggestions from synced IDP principal data (Growth+ only)."""
+        return self._run(self._async.suggest_policies(idp_id))
 
 
 class _SyncPrincipalsProxy(_SyncProxy):
@@ -798,6 +878,9 @@ class _SyncPrincipalsProxy(_SyncProxy):
                 identity_provider_id=identity_provider_id,
             )
         )
+    def list_all(self, per_page: int = 100, *, status: str | None = None, search: str | None = None, group: str | None = None) -> Any:
+        """Return an async iterator that lazily paginates through all principals."""
+        return _SyncPaginator(self._async.list_all(per_page, status=status, search=search, group=group), self._run)
 
 
 class _SyncGroupsProxy(_SyncProxy):
@@ -809,6 +892,9 @@ class _SyncGroupsProxy(_SyncProxy):
         search: str | None = None,
     ) -> Any:
         return self._run(self._async.list(page, per_page, search=search))
+    def list_all(self, per_page: int = 100, *, search: str | None = None) -> Any:
+        """Return an async iterator that lazily paginates through all groups."""
+        return _SyncPaginator(self._async.list_all(per_page, search=search), self._run)
 
 
 class _SyncDataCatalogProxy(_SyncProxy):
@@ -823,6 +909,9 @@ class _SyncDataCatalogProxy(_SyncProxy):
 
     def update_metadata(self, resource_id: str, **kwargs: Any) -> Any:
         return self._run(self._async.update_metadata(resource_id, **kwargs))
+    def list_all(self, per_page: int = 100, *, classification: str | None = None, sensitivity: str | None = None, domain: str | None = None, label: str | None = None, source_connector_id: str | None = None) -> Any:
+        """Return an async iterator that lazily paginates through all resources."""
+        return _SyncPaginator(self._async.list_all(per_page, classification=classification, sensitivity=sensitivity, domain=domain, label=label, source_connector_id=source_connector_id), self._run)
 
 
 class _SyncOnboardingProxy(_SyncProxy):
@@ -851,6 +940,9 @@ class _SyncPipelinesProxy(_SyncProxy):
 
     def run(self, pipeline_id: str) -> Any:
         return self._run(self._async.run(pipeline_id))
+    def list_all(self, per_page: int = 100) -> Any:
+        """Return an async iterator that lazily paginates through all pipelines."""
+        return _SyncPaginator(self._async.list_all(per_page), self._run)
 
 
 class _SyncBillingProxy(_SyncProxy):
@@ -871,6 +963,9 @@ class _SyncBillingProxy(_SyncProxy):
 
     def create_portal(self, return_url: str | None = None) -> Any:
         return self._run(self._async.create_portal(return_url))
+    def sync_subscription(self) -> Any:
+        """Re-sync the organization's plan from Stripe."""
+        return self._run(self._async.sync_subscription())
 
 
 class _SyncAuditProxy(_SyncProxy):
@@ -879,11 +974,20 @@ class _SyncAuditProxy(_SyncProxy):
 
     def export_csv(self, **kwargs: Any) -> Any:
         return self._run(self._async.export_csv(**kwargs))
+    def list_all(self, per_page: int = 100, *, event_types: str | None = None, actor: str | None = None, date_from: str | None = None, date_to: str | None = None) -> Any:
+        """Return an async iterator that lazily paginates through all audit events."""
+        return _SyncPaginator(self._async.list_all(per_page, event_types=event_types, actor=actor, date_from=date_from, date_to=date_to), self._run)
 
 
 class _SyncSimulatorProxy(_SyncProxy):
     def run(self, principal_id: str, **kwargs: Any) -> Any:
         return self._run(self._async.run(principal_id, **kwargs))
+    def run_batch_preview(self, principal_ids: list[str], connector_id: str, query: str, *, top_k: int = 10, search_mode: Any = 'vector', alpha: float | None = None) -> Any:
+        """Execute a batch live preview — one search, up to 5 principals (Growth+ only)."""
+        return self._run(self._async.run_batch_preview(principal_ids, connector_id, query, top_k=top_k, search_mode=search_mode, alpha=alpha))
+    def run_preview(self, principal_id: str, connector_id: str, query: str, *, top_k: int = 10, search_mode: Any = 'vector', alpha: float | None = None) -> Any:
+        """Execute a live preview — real search + policy evaluation for a single principal (Growth+ only)."""
+        return self._run(self._async.run_preview(principal_id, connector_id, query, top_k=top_k, search_mode=search_mode, alpha=alpha))
 
 
 class _SyncDashboardProxy(_SyncProxy):
@@ -920,3 +1024,58 @@ class _SyncRelationshipsProxy(_SyncProxy):
 
     def delete(self, relationship_id: str) -> None:
         return self._run(self._async.delete(relationship_id))
+
+
+class _SyncIngestJobsProxy(_SyncProxy):
+    """Synchronous proxy for :class:`IngestionJobsResource`."""
+
+    def cancel(self, job_id: str) -> Any:
+        """Cancel a queued job (running jobs are not cancellable)."""
+        return self._run(self._async.cancel(job_id))
+    def enqueue(self, connector_id: str, job_type: str, payload: dict[str, Any], *, max_attempts: int = 3) -> Any:
+        """Enqueue an async ingestion job (202). job_type: document | batch."""
+        return self._run(self._async.enqueue(connector_id, job_type, payload, max_attempts=max_attempts))
+    def get(self, job_id: str) -> Any:
+        """Get one job's status and progress."""
+        return self._run(self._async.get(job_id))
+    def list(self, *, status: str | None = None, limit: int = 50, offset: int = 0) -> Any:
+        """List the org's jobs newest-first."""
+        return self._run(self._async.list(status=status, limit=limit, offset=offset))
+    def wait_for(self, job_id: str, *, poll_seconds: float = 2.0, timeout: float = 600.0) -> Any:
+        """Poll until the job reaches a terminal status (or raise TimeoutError)."""
+        return self._run(self._async.wait_for(job_id, poll_seconds=poll_seconds, timeout=timeout))
+
+
+class _SyncSourcesProxy(_SyncProxy):
+    """Synchronous proxy for :class:`SourceConnectionsResource`."""
+
+    def acl_coverage(self, source_connection_id: str) -> Any:
+        """Coverage report: matched/unmatched principals in imported ACLs."""
+        return self._run(self._async.acl_coverage(source_connection_id))
+    def create(self, name: str, source_type: str, config: dict[str, Any]) -> Any:
+        return self._run(self._async.create(name, source_type, config))
+    def delete(self, source_connection_id: str) -> Any:
+        return self._run(self._async.delete(source_connection_id))
+    def get(self, source_connection_id: str) -> Any:
+        return self._run(self._async.get(source_connection_id))
+    def list(self) -> Any:
+        return self._run(self._async.list())
+    def test(self, source_connection_id: str) -> Any:
+        return self._run(self._async.test(source_connection_id))
+
+
+class _SyncUsersProxy(_SyncProxy):
+    """Synchronous proxy for :class:`UsersResource`."""
+
+    def get_me(self) -> Any:
+        """Get the current authenticated user with organization plan."""
+        return self._run(self._async.get_me())
+    def get_org_settings(self) -> Any:
+        """Get organization-level settings."""
+        return self._run(self._async.get_org_settings())
+    def update_me(self, name: str) -> Any:
+        """Update the current user's display name."""
+        return self._run(self._async.update_me(name))
+    def update_org_settings(self, *, name: str | None = None, failure_mode: str | None = None, llm_api_key: str | None = None, llm_provider: str | None = None, clear_llm_api_key: bool = False, llm_key_query_cap: int | None = None) -> Any:
+        """Update organization settings."""
+        return self._run(self._async.update_org_settings(name=name, failure_mode=failure_mode, llm_api_key=llm_api_key, llm_provider=llm_provider, clear_llm_api_key=clear_llm_api_key, llm_key_query_cap=llm_key_query_cap))

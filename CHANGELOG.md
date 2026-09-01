@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.10.0] - 2026-09-01
+
+### Added
+- **Full sync parity.** `GatecoClient` now exposes every method `AsyncGatecoClient` has,
+  including `users`, `sources`, `ingest.jobs`, `retrievals.filter`, policy templates and
+  versions, simulator previews, and every `list_all` (returned as a plain iterator).
+  `tests/test_sync_parity.py` fails the build if the two clients drift again.
+- `GatecoClient(access_token=..., refresh_token=...)`, matching the async client.
+- CLI: refreshed tokens are written back to `~/.gateco/credentials.json`, and an expired or
+  revoked session now says to run `gateco login` or set `GATECO_API_KEY`.
+
 ## [1.9.1] - 2026-09-01
 
 ### Added

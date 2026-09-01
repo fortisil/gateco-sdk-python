@@ -17,7 +17,6 @@ from gateco_sdk.cli import (
     main,
 )
 
-
 # ---------------------------------------------------------------------------
 # Credential save / load
 # ---------------------------------------------------------------------------
@@ -284,3 +283,56 @@ class TestLoginCommand:
         with pytest.raises(SystemExit) as exc_info:
             main()
         assert exc_info.value.code == 1
+
+
+class TestSessionHygiene:
+    """Plan Phase 5 (finding C6): refreshed tokens must be saved, expiry must say what to do."""
+
+    def test_refreshed_tokens_are_persisted_on_exit(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import asyncio
+        import json
+
+        from gateco_sdk.cli import _get_client
+
+        cred_dir = tmp_path / ".gateco"
+        cred_file = cred_dir / "credentials.json"
+        monkeypatch.setattr("gateco_sdk.cli._CRED_DIR", cred_dir)
+        monkeypatch.setattr("gateco_sdk.cli._CRED_FILE", cred_file)
+        monkeypatch.delenv("GATECO_API_KEY", raising=False)
+        monkeypatch.delenv("GATECO_BASE_URL", raising=False)
+        _save_credentials("old-access", "old-refresh", "http://example.com/api")
+
+        async def _session() -> None:
+            async with _get_client() as client:
+                # what the SDK's auto-refresh does on a 401 / near-expiry
+                client._token_manager.set_tokens("new-access", "new-refresh")
+
+        asyncio.run(_session())
+
+        stored = json.loads(cred_file.read_text())
+        assert stored["access_token"] == "new-access"
+        assert stored["refresh_token"] == "new-refresh"
+        assert stored["base_url"] == "http://example.com/api"
+
+    def test_expired_session_prints_the_login_hint(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        from gateco_sdk import cli
+        from gateco_sdk.errors import AuthenticationError
+
+        async def _expired(args):
+            raise AuthenticationError("Token has expired", code="AUTH_TOKEN_EXPIRED")
+
+        command = "whoami" if "whoami" in cli._DISPATCH else next(iter(cli._DISPATCH))
+        monkeypatch.setitem(cli._DISPATCH, command, _expired)
+        monkeypatch.setattr("sys.argv", ["gateco", command])
+
+        with pytest.raises(SystemExit) as exc:
+            cli.main()
+
+        assert exc.value.code == 1
+        err = capsys.readouterr().err
+        assert "gateco login" in err, err
+        assert "GATECO_API_KEY" in err, err
