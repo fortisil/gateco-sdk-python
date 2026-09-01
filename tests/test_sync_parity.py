@@ -31,11 +31,8 @@ def _resource_attrs(instance) -> dict[str, object]:
     for name in dir(instance):
         if name.startswith("_"):
             continue
-        try:
-            value = getattr(instance, name)
-        except Exception:  # noqa: BLE001
-            continue
-        if callable(value):
+        value = getattr(instance, name, None)
+        if value is None or callable(value):
             continue
         if type(value).__name__.endswith(("Resource", "Proxy")):
             out[name] = value
