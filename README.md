@@ -20,7 +20,8 @@ With Gateco:
 ```python
 from gateco_sdk import GatecoClient
 
-client = GatecoClient(api_key="gck_live_abc123...")
+client = GatecoClient("https://api.gateco.ai")
+client.login("you@yourco.com", "...")
 
 result = client.retrievals.execute(
     query="What is the CEO's salary?",
