@@ -104,6 +104,86 @@ class PrincipalsResource:
         return Principal.model_validate(data)
 
     # ------------------------------------------------------------------
+    # Local directory (create / update / delete)
+    # ------------------------------------------------------------------
+
+    async def create(
+        self,
+        email: str,
+        *,
+        display_name: str | None = None,
+        groups: list[str] | None = None,
+        roles: list[str] | None = None,
+        attributes: dict[str, Any] | None = None,
+        provider_subject: str | None = None,
+    ) -> Principal:
+        """Create a principal in the organisation's built-in local directory.
+
+        Available on every plan, bounded by the plan's ``principals`` limit
+        (Free 10 / Team 100 / Growth+ unlimited). The local directory is
+        provisioned automatically on first use and never syncs. Principals
+        from a synced identity provider or SCIM are not created here.
+
+        Raises:
+            gateco_sdk.errors.ConflictError: An active principal with this
+                email already exists in the local directory.
+            gateco_sdk.errors.EntitlementError: The plan's principal limit is
+                reached (``is_limit`` is True).
+        """
+        body: dict[str, Any] = {"email": email}
+        if display_name is not None:
+            body["display_name"] = display_name
+        if groups is not None:
+            body["groups"] = groups
+        if roles is not None:
+            body["roles"] = roles
+        if attributes is not None:
+            body["attributes"] = attributes
+        if provider_subject is not None:
+            body["provider_subject"] = provider_subject
+        data = await self._client._request("POST", "/api/principals", json=body)
+        return Principal.model_validate(data)
+
+    async def update(
+        self,
+        principal_id: str,
+        *,
+        display_name: str | None = None,
+        groups: list[str] | None = None,
+        roles: list[str] | None = None,
+        attributes: dict[str, Any] | None = None,
+        status: str | None = None,
+    ) -> Principal:
+        """Update a local principal. Synced principals are rejected (422).
+
+        ``status`` may be ``"active"``, ``"inactive"`` or ``"suspended"``;
+        reactivating consumes a principal slot again.
+        """
+        body: dict[str, Any] = {}
+        if display_name is not None:
+            body["display_name"] = display_name
+        if groups is not None:
+            body["groups"] = groups
+        if roles is not None:
+            body["roles"] = roles
+        if attributes is not None:
+            body["attributes"] = attributes
+        if status is not None:
+            body["status"] = status
+        data = await self._client._request(
+            "PATCH", f"/api/principals/{principal_id}", json=body
+        )
+        return Principal.model_validate(data)
+
+    async def delete(self, principal_id: str) -> None:
+        """Deactivate a local principal (status -> inactive).
+
+        Never a hard delete: the audit trail is preserved and retrieval
+        refuses the principal, exactly like a SCIM offboarding.
+        """
+        await self._client._request("DELETE", f"/api/principals/{principal_id}")
+
+    # ------------------------------------------------------------------
     # Resolve
     # ------------------------------------------------------------------
 

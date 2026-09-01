@@ -16,7 +16,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Credential helpers
 # ---------------------------------------------------------------------------
@@ -94,7 +93,7 @@ def _save_credentials(
         os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)  # 0600
         os.replace(tmp_path, str(_CRED_FILE))
     except Exception:
-        os.close(fd) if not os.get_inheritable(fd) else None  # noqa: E501
+        os.close(fd) if not os.get_inheritable(fd) else None
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise
@@ -120,8 +119,7 @@ def _get_client() -> Any:
     # Strip trailing /api if present -- the SDK expects the root URL and
     # prepends /api in its request paths.
     raw_base = str(base_url)
-    if raw_base.endswith("/api"):
-        raw_base = raw_base[: -len("/api")]
+    raw_base = raw_base.removesuffix("/api")
 
     client = AsyncGatecoClient(raw_base, api_key=api_key)
 
@@ -164,8 +162,7 @@ async def _cmd_login(args: argparse.Namespace) -> None:
 
     base_url = args.base_url
     raw_base = base_url
-    if raw_base.endswith("/api"):
-        raw_base = raw_base[: -len("/api")]
+    raw_base = raw_base.removesuffix("/api")
 
     async with AsyncGatecoClient(raw_base) as client:
         token_resp = await client.login(args.email, args.password)
@@ -322,6 +319,32 @@ async def _cmd_principals_resolve(args: argparse.Namespace) -> None:
             identity_provider_id=identity_provider_id,
         )
     _output(principal)
+
+
+async def _cmd_principals_create(args: argparse.Namespace) -> None:
+    """Create a principal in the org's local directory (no identity provider needed)."""
+    attributes: dict[str, str] = {}
+    for item in args.attr or []:
+        if "=" not in item:
+            _error(f"--attr expects key=value, got {item!r}")
+        k, v = item.split("=", 1)
+        attributes[k.strip()] = v.strip()
+    async with _get_client() as client:
+        principal = await client.principals.create(
+            args.email,
+            display_name=args.name,
+            groups=args.group or None,
+            roles=args.role or None,
+            attributes=attributes or None,
+        )
+    _output(principal)
+
+
+async def _cmd_principals_deactivate(args: argparse.Namespace) -> None:
+    """Deactivate a local principal (status -> inactive; never a hard delete)."""
+    async with _get_client() as client:
+        await client.principals.delete(args.principal_id)
+    _output({"id": args.principal_id, "status": "inactive"})
 
 
 # -- connectors subcommands ------------------------------------------------
@@ -666,6 +689,20 @@ def _build_parser() -> argparse.ArgumentParser:
     prin_list.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
     prin_list.add_argument("--per-page", type=int, default=20, help="Items per page (default: 20)")
 
+    prin_create = prin_sub.add_parser(
+        "create", help="Create a principal in the local directory (no identity provider needed)"
+    )
+    prin_create.add_argument("--email", required=True, help="Email address (unique per directory)")
+    prin_create.add_argument("--name", default=None, help="Display name")
+    prin_create.add_argument("--group", action="append", help="Group name (repeatable)")
+    prin_create.add_argument("--role", action="append", help="Role name (repeatable)")
+    prin_create.add_argument("--attr", action="append", help="Attribute as key=value (repeatable)")
+
+    prin_deactivate = prin_sub.add_parser(
+        "deactivate", help="Deactivate a local principal (status -> inactive)"
+    )
+    prin_deactivate.add_argument("principal_id", help="Principal UUID")
+
     prin_resolve = prin_sub.add_parser(
         "resolve", help="Resolve a principal by email or provider subject ID"
     )
@@ -773,6 +810,8 @@ _SUB_DISPATCH: dict[str, dict[str, Any]] = {
     "principals": {
         "list": _cmd_principals_list,
         "resolve": _cmd_principals_resolve,
+        "create": _cmd_principals_create,
+        "deactivate": _cmd_principals_deactivate,
     },
     "connectors": {
         "list": _cmd_connectors_list,

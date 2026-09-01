@@ -22,6 +22,9 @@ class Principal(BaseModel):
     id: str
     identity_provider_id: str | None = None
     identity_provider_name: str | None = None
+    #: "local" means the principal is directly managed (create/update/delete
+    #: via this SDK); any other value means it is owned by a synced provider.
+    identity_provider_type: str | None = None
     external_id: str | None = None
     provider_subject: str | None = None
     display_name: str | None = None

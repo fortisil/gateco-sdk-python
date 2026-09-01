@@ -16,18 +16,18 @@ from gateco_sdk.resources.billing import BillingResource
 from gateco_sdk.resources.connectors import ConnectorsResource
 from gateco_sdk.resources.dashboard import DashboardResource
 from gateco_sdk.resources.data_catalog import DataCatalogResource
+from gateco_sdk.resources.groups import GroupsResource
 from gateco_sdk.resources.identity_providers import IdentityProvidersResource
 from gateco_sdk.resources.ingestion import IngestionResource
-from gateco_sdk.resources.source_connections import SourceConnectionsResource
 from gateco_sdk.resources.onboarding import OnboardingResource
 from gateco_sdk.resources.pipelines import PipelinesResource
 from gateco_sdk.resources.policies import PoliciesResource
-from gateco_sdk.resources.groups import GroupsResource
 from gateco_sdk.resources.principals import PrincipalsResource
 from gateco_sdk.resources.relationships import RelationshipResource
-from gateco_sdk.resources.retroactive import RetroactiveResource
 from gateco_sdk.resources.retrievals import RetrievalsResource
+from gateco_sdk.resources.retroactive import RetroactiveResource
 from gateco_sdk.resources.simulator import SimulatorResource
+from gateco_sdk.resources.source_connections import SourceConnectionsResource
 from gateco_sdk.resources.users import UsersResource
 from gateco_sdk.types.auth import TokenResponse
 
@@ -361,7 +361,7 @@ class AsyncGatecoClient:
     async def __aenter__(self) -> AsyncGatecoClient:
         return self
 
-    async def __aexit__(self, *exc: Any) -> None:
+    async def __aexit__(self, *exc: object) -> None:
         await self.close()
 
     async def close(self) -> None:
@@ -526,7 +526,7 @@ class GatecoClient:
     def __enter__(self) -> GatecoClient:
         return self
 
-    def __exit__(self, *exc: Any) -> None:
+    def __exit__(self, *exc: object) -> None:
         self.close()
 
     def close(self) -> None:
@@ -744,6 +744,33 @@ class _SyncPrincipalsProxy(_SyncProxy):
 
     def get(self, principal_id: str) -> Any:
         return self._run(self._async.get(principal_id))
+
+    def create(
+        self,
+        email: str,
+        *,
+        display_name: str | None = None,
+        groups: list[str] | None = None,
+        roles: list[str] | None = None,
+        attributes: dict[str, Any] | None = None,
+        provider_subject: str | None = None,
+    ) -> Any:
+        return self._run(
+            self._async.create(
+                email,
+                display_name=display_name,
+                groups=groups,
+                roles=roles,
+                attributes=attributes,
+                provider_subject=provider_subject,
+            )
+        )
+
+    def update(self, principal_id: str, **fields: Any) -> Any:
+        return self._run(self._async.update(principal_id, **fields))
+
+    def delete(self, principal_id: str) -> None:
+        return self._run(self._async.delete(principal_id))
 
     def resolve(
         self,
