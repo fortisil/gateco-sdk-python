@@ -253,3 +253,25 @@ class TestSyncClient:
         with respx.mock(base_url=BASE_URL):
             with GatecoClient(BASE_URL) as client:
                 assert client is not None
+
+
+class TestDefaultBaseUrl:
+    """1.9.0: production by default, GATECO_BASE_URL overrides, explicit wins."""
+
+    def test_default_is_production(self, monkeypatch):
+        monkeypatch.delenv("GATECO_BASE_URL", raising=False)
+        from gateco_sdk.client import resolve_base_url
+
+        assert resolve_base_url(None) == "https://api.gateco.ai"
+
+    def test_env_overrides_default(self, monkeypatch):
+        monkeypatch.setenv("GATECO_BASE_URL", "http://localhost:8000")
+        from gateco_sdk.client import resolve_base_url
+
+        assert resolve_base_url(None) == "http://localhost:8000"
+
+    def test_explicit_argument_wins(self, monkeypatch):
+        monkeypatch.setenv("GATECO_BASE_URL", "http://localhost:8000")
+        from gateco_sdk.client import resolve_base_url
+
+        assert resolve_base_url("https://staging.example") == "https://staging.example"

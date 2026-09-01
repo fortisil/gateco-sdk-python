@@ -93,7 +93,7 @@ class TestArgParsing:
         assert args.command == "login"
         assert args.email == "a@b.com"
         assert args.password == "secret"
-        assert args.base_url == "http://localhost:8000/api"
+        assert args.base_url == "https://api.gateco.ai"
 
     def test_login_custom_url(self) -> None:
         parser = _build_parser()

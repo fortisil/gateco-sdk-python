@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Any
 
 from gateco_sdk._auth import TokenManager
@@ -31,12 +32,22 @@ from gateco_sdk.resources.source_connections import SourceConnectionsResource
 from gateco_sdk.resources.users import UsersResource
 from gateco_sdk.types.auth import TokenResponse
 
+#: Where the client points when no URL is given. Since 1.9.0 this is production,
+#: overridable with GATECO_BASE_URL. It used to be http://localhost:8000, which
+#: is why every documented snippet failed for anyone outside the repo.
+DEFAULT_BASE_URL = "https://api.gateco.ai"
+
+
+def resolve_base_url(base_url: str | None) -> str:
+    """Explicit argument, else ``GATECO_BASE_URL``, else production."""
+    return base_url or os.environ.get("GATECO_BASE_URL") or DEFAULT_BASE_URL
+
 
 class AsyncGatecoClient:
     """Async client for the Gateco API.
 
     Args:
-        base_url: Root URL of the Gateco API.
+        base_url: Root URL of the Gateco API. Defaults to GATECO_BASE_URL, else https://api.gateco.ai.
         api_key: Optional static API key (mutually exclusive with login flow).
         timeout: HTTP request timeout in seconds.
         max_retries: Maximum automatic retries for 429 / 5xx responses.
@@ -51,7 +62,7 @@ class AsyncGatecoClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str | None = None,
         *,
         api_key: str | None = None,
         access_token: str | None = None,
@@ -60,6 +71,7 @@ class AsyncGatecoClient:
         max_retries: int = 2,
         retry_backoff_factor: float = 0.5,
     ) -> None:
+        base_url = resolve_base_url(base_url)
         self._transport = Transport(
             base_url,
             timeout=timeout,
@@ -397,7 +409,7 @@ class GatecoClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str | None = None,
         *,
         api_key: str | None = None,
         timeout: float = 30.0,
@@ -405,7 +417,7 @@ class GatecoClient:
         retry_backoff_factor: float = 0.5,
     ) -> None:
         self._async_client = AsyncGatecoClient(
-            base_url,
+            resolve_base_url(base_url),
             api_key=api_key,
             timeout=timeout,
             max_retries=max_retries,
@@ -556,8 +568,8 @@ class _SyncAnswersProxy(_SyncProxy):
 
 
 class _SyncApiKeysProxy(_SyncProxy):
-    def create(self, name: str, expires_at: str | None = None) -> Any:
-        return self._run(self._async.create(name, expires_at))
+    def create(self, name: str, scopes: list[str], expires_at: str | None = None) -> Any:
+        return self._run(self._async.create(name, scopes, expires_at))
 
     def list(self) -> Any:
         return self._run(self._async.list())

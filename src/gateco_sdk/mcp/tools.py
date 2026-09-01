@@ -34,7 +34,16 @@ from gateco_sdk.mcp.formatters import (
 def _handle_error(exc: GatecoError) -> str:
     """Map a ``GatecoError`` to a human-readable error string."""
     if isinstance(exc, AuthenticationError):
-        return "Authentication failed. Run `gateco login` or set GATECO_API_KEY."
+        return (
+            "Authentication failed. Run `gateco login`, or set GATECO_API_KEY to a key that has "
+            "the `retrieve` scope (Settings > API Keys). Note: GATECO_API_KEY takes precedence "
+            "over a stored login."
+        )
+    if isinstance(exc, AuthorizationError) and getattr(exc, "code", "") == "API_KEY_SCOPE_MISSING":
+        return (
+            "This API key lacks the `retrieve` scope. Create a key with that scope under "
+            "Settings > API Keys, or run `gateco login` to use a user session instead."
+        )
     if isinstance(exc, EntitlementError):
         # A quota-exhausted 403 also carries upgrade_to, so advising "requires
         # <plan>" unconditionally tells a customer to upgrade when deleting a
@@ -280,4 +289,3 @@ async def handle_resolve_principal(
 class _ToolError(Exception):
     """Raised by tool handlers to signal an error to the MCP layer."""
 
-    pass

@@ -23,7 +23,7 @@ from typing import Any
 _CRED_DIR = Path.home() / ".gateco"
 _CRED_FILE = _CRED_DIR / "credentials.json"
 
-_DEFAULT_BASE_URL = "http://localhost:8000/api"
+_DEFAULT_BASE_URL = os.environ.get("GATECO_BASE_URL", "https://api.gateco.ai")  # 1.9.0: production, not localhost
 
 
 def _load_credentials() -> dict[str, Any]:
@@ -158,6 +158,12 @@ def _error(msg: str) -> None:
 
 async def _cmd_login(args: argparse.Namespace) -> None:
     """Authenticate and store credentials."""
+    if os.environ.get("GATECO_API_KEY"):
+        print(
+            "warning: GATECO_API_KEY is set and takes precedence over a stored session. "
+            "Unset it if you want this login to be used.",
+            file=sys.stderr,
+        )
     from gateco_sdk.client import AsyncGatecoClient
 
     base_url = args.base_url
@@ -292,6 +298,23 @@ async def _cmd_retrieve(args: argparse.Namespace) -> None:
 
 
 # -- principals subcommands ------------------------------------------------
+
+
+async def _cmd_whoami(args: argparse.Namespace) -> None:
+    """Show how the CLI is authenticating: URL, session or key, and the key's scopes."""
+    creds = _load_credentials()
+    source = "GATECO_API_KEY" if os.environ.get("GATECO_API_KEY") else (
+        "~/.gateco/credentials.json (gateco login)" if creds.get("access_token") else "none"
+    )
+    async with _get_client() as client:
+        me = await client.users.get_me()
+    auth = getattr(me, "auth", None) or (me.get("auth") if isinstance(me, dict) else None) or {}
+    _output({
+        "base_url": str(creds.get("base_url", _DEFAULT_BASE_URL)),
+        "credential_source": source,
+        "auth": auth if isinstance(auth, dict) else getattr(auth, "model_dump", lambda: auth)(),
+        "email": getattr(me, "email", None) or (me.get("email") if isinstance(me, dict) else None),
+    })
 
 
 async def _cmd_principals_list(args: argparse.Namespace) -> None:
@@ -682,6 +705,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # -- principals ---------------------------------------------------------
+    subparsers.add_parser("whoami", help="Show base URL, credential source, and key scopes")
+
     prin_parser = subparsers.add_parser("principals", help="Principal management")
     prin_sub = prin_parser.add_subparsers(dest="subcommand")
 
@@ -798,6 +823,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 _DISPATCH: dict[str, Any] = {
     "login": _cmd_login,
+    "whoami": _cmd_whoami,
     "ingest": _cmd_ingest,
     "ingest-batch": _cmd_ingest_batch,
     "retrieve": _cmd_retrieve,

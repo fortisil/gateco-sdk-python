@@ -3,7 +3,7 @@
   "name": "ai.gateco/gateco",
   "title": "Gateco",
   "description": "Permission-aware retrieval for AI systems: policy-enforced access to organizational knowledge.",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "websiteUrl": "https://www.gateco.ai",
   "repository": {
     "url": "https://github.com/fortisil/gateco-sdk-python",
@@ -13,7 +13,7 @@
     {
       "registryType": "pypi",
       "identifier": "gateco",
-      "version": "1.8.1",
+      "version": "1.9.0",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {
@@ -32,7 +32,7 @@
       "environmentVariables": [
         {
           "name": "GATECO_API_KEY",
-          "description": "Gateco API key (create one in the Gateco dashboard under Settings > API Keys)",
+          "description": "Gateco API key WITH THE retrieve SCOPE (Settings > API Keys > Create, tick retrieve). Available on every plan.",
           "isRequired": true,
           "isSecret": true
         },

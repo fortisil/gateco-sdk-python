@@ -25,6 +25,7 @@ class ApiKeysResource:
     async def create(
         self,
         name: str,
+        scopes: list[str],
         expires_at: str | None = None,
     ) -> dict[str, Any]:
         """Create a new API key.
@@ -34,6 +35,10 @@ class ApiKeysResource:
 
         Args:
             name: Human-readable label for the key (e.g. ``"prod-worker"``).
+            scopes: What the key may do. One or more of ``"ingest"``,
+                ``"relationships"``, ``"retrieve"``, ``"principals"``. Required:
+                a key is created with exactly the scopes it needs. A RAG service
+                needs ``["retrieve"]``; an ingestion pipeline ``["ingest"]``.
             expires_at: Optional ISO 8601 expiry datetime string.  When omitted
                 the key does not expire.
 
@@ -41,7 +46,7 @@ class ApiKeysResource:
             Dict containing ``id``, ``name``, ``prefix``, and ``key``
             (plaintext, shown once).
         """
-        body: dict[str, Any] = {"name": name}
+        body: dict[str, Any] = {"name": name, "scopes": list(scopes)}
         if expires_at is not None:
             body["expires_at"] = expires_at
         data = await self._client._request("POST", "/api/api-keys", json=body)

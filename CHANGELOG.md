@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.9.0] - 2026-09-01
+
+### Changed (breaking for two call patterns; see below)
+- **Default base URL is now `https://api.gateco.ai`**, overridable with the `GATECO_BASE_URL`
+  environment variable. It used to be `http://localhost:8000`, which made every documented
+  snippet fail for anyone outside the repository. Local development sets
+  `GATECO_BASE_URL=http://localhost:8000`.
+- **`api_keys.create()` now requires `scopes`** (Python: `create(name, scopes, expires_at=None)`;
+  TypeScript: `create({ name, scopes })`). Calling it without scopes returns HTTP 422 from the
+  server. Scopes: `ingest`, `relationships`, `retrieve`, `principals`. Existing stored keys were
+  migrated to `ingest` + `relationships`, exactly their previous reach; `retrieve` is always an
+  explicit opt-in.
+
+### Added
+- API keys work on the retrieval path. A key with the `retrieve` scope can call
+  `retrievals.execute` / `filter`, `answers.execute`, `principals.resolve` / `list` / `get` and
+  `connectors.list` (minimal shape). This is the machine credential a RAG service or MCP host
+  should use; `login()` is for the console and account management. Keys are available on every
+  plan (limit: Free 2 / Team 10 / Growth 25 / Enterprise unlimited).
+- Local principals: `principals.create` / `update` / `delete` manage users in the org's built-in
+  local directory without an identity provider (Free 10 / Team 100 / Growth+ unlimited).
+  `Principal.identity_provider_type` is `"local"` for these.
+- `users.get_me()` returns an `auth` block (`kind`, `key_id`, `key_name`, `scopes`) describing how
+  the call authenticated.
+- CLI: `gateco whoami`; `gateco principals create|deactivate`; `gateco login` warns when
+  `GATECO_API_KEY` is set (it takes precedence over a stored session).
+- MCP: the authentication error now says a key needs the `retrieve` scope, and a scope-missing 403
+  is reported as such. `server.json` describes the required scope. MCP works on every plan.
+
+### Fixed
+- A 401 from a JWT-only endpoint when an API key was supplied now reads
+  `AUTH_JWT_REQUIRED: This endpoint requires a user session; API keys are not accepted here`
+  instead of `Missing authentication token`.
+- API key `last_used_at` is persisted on read-only calls (it stayed `Never` after real use).
+- Rotating a key preserves its scopes.
+
 ## [1.8.1] - 2026-08-04
 
 ### Added

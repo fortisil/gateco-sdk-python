@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gateco"
-version = "1.8.1"
+version = "1.9.0"
 description = "Official Python SDK for the Gateco API"
 authors = [{name = "Rami Refaeli", email = "rami@gateco.ai"}]
 license = {text = "MIT"}
