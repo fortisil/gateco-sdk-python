@@ -60,6 +60,13 @@ class FilterResult(BaseModel):
     denial_reason: str | None = None
     metadata: dict[str, Any] | None = None
     external_resource_id: str | None = None
+    #: Sidecar chunk id (execute endpoint); None for inline / sql_view subjects.
+    chunk_id: str | None = None
+    #: The policy whose matched rule decided this result, when one did.
+    matched_policy_id: str | None = None
+    #: Which metadata resolution path produced the policy subject:
+    #: "sidecar", "inline", or "sql_view".
+    metadata_resolution_mode_used: str | None = None
 
     # Dict-like access for backwards compatibility with code that treats
     # results as plain dicts (e.g., r.get("granted"), r["metadata"]).

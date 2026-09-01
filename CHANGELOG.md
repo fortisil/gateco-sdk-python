@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1] - 2026-09-01
+
+### Added
+- `FilterResult` now types three fields the execute endpoint has always returned:
+  `chunk_id`, `matched_policy_id`, and `metadata_resolution_mode_used`. They were
+  reachable only as untyped extras before. `matched_policy_id` is populated by servers
+  from 2026-09-01: earlier servers always returned `null` for it.
+
 ## [1.9.0] - 2026-09-01
 
 ### Changed (breaking for two call patterns; see below)
