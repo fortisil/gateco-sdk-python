@@ -275,3 +275,28 @@ class TestDefaultBaseUrl:
         from gateco_sdk.client import resolve_base_url
 
         assert resolve_base_url("https://staging.example") == "https://staging.example"
+
+
+class TestApiKeyEnvFallback:
+    """0aa: GatecoClient must read GATECO_API_KEY from env when not passed,
+    mirroring the GATECO_BASE_URL treatment. Regression from the 2026-09-03 cold run."""
+
+    def test_async_client_reads_gateco_api_key_from_env(self, monkeypatch):
+        monkeypatch.setenv("GATECO_API_KEY", "gck_env_test")
+        client = AsyncGatecoClient(BASE_URL)
+        assert client._token_manager.get_auth_headers() == {"X-API-Key": "gck_env_test"}
+
+    def test_explicit_api_key_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("GATECO_API_KEY", "gck_env")
+        client = AsyncGatecoClient(BASE_URL, api_key="gck_explicit")
+        assert client._token_manager.get_auth_headers() == {"X-API-Key": "gck_explicit"}
+
+    def test_sync_client_reads_gateco_api_key_from_env(self, monkeypatch):
+        monkeypatch.setenv("GATECO_API_KEY", "gck_env_sync")
+        client = GatecoClient(BASE_URL)
+        assert client._async_client._token_manager.get_auth_headers() == {"X-API-Key": "gck_env_sync"}
+
+    def test_no_env_no_arg_is_unauthenticated(self, monkeypatch):
+        monkeypatch.delenv("GATECO_API_KEY", raising=False)
+        client = AsyncGatecoClient(BASE_URL)
+        assert client._token_manager.get_auth_headers() == {}

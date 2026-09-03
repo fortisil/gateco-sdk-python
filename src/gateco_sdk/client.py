@@ -78,7 +78,7 @@ class AsyncGatecoClient:
             max_retries=max_retries,
             retry_backoff_factor=retry_backoff_factor,
         )
-        self._token_manager = TokenManager(api_key=api_key)
+        self._token_manager = TokenManager(api_key=api_key or os.environ.get("GATECO_API_KEY"))
         if access_token:
             self._token_manager.set_tokens(access_token, refresh_token)
 
