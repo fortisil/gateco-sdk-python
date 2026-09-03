@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.10.1] - 2026-09-03
+
+### Fixed
+- `GatecoClient` / `AsyncGatecoClient` now read `GATECO_API_KEY` from the environment when no
+  `api_key` argument is given, mirroring the existing `GATECO_BASE_URL` handling. Before this,
+  only the CLI and MCP server resolved the env var, so `GatecoClient()` with `GATECO_API_KEY`
+  exported sent no credential and failed with an authentication error. An explicit `api_key=`
+  still takes precedence over the environment.
+
 ## [1.10.0] - 2026-09-01
 
 ### Added

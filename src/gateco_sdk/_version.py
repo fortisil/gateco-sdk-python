@@ -1,3 +1,3 @@
 """Version information for the Gateco SDK."""
 
-__version__ = "1.10.0"
+__version__ = "1.10.1"
