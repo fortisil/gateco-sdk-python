@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1] - 2026-09-04
+
+### Fixed
+- `SecuredRetrieval.granted_count` / `denied_count` / `total_results` are now derived from
+  `allowed_chunks` / `denied_chunks` / `results` (the fields the API actually reports). They
+  previously always read 0 because the API does not send those aggregates (0cc-b).
+
 ## [1.11.0] - 2026-09-04
 
 ### Added

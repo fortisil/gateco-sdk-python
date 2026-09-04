@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class DenialReason(BaseModel):
@@ -133,6 +133,15 @@ class SecuredRetrieval(BaseModel):
     denial_reasons: list[str] = []
     policy_trace: list[dict[str, Any]] = []
     warnings: list[str] = []
+
+    @model_validator(mode="after")
+    def _derive_counts(self) -> "SecuredRetrieval":
+        # 0cc-b: the API reports counts as *_chunks and does not send the *_count
+        # aggregates, so mirror them here instead of leaving them at 0.
+        self.granted_count = self.granted_count or self.allowed_chunks
+        self.denied_count = self.denied_count or self.denied_chunks
+        self.total_results = self.total_results or len(self.results)
+        return self
     created_at: datetime | None = None
     duration_ms: float | None = None
     latency_ms: float | None = None
