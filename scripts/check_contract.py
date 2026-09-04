@@ -140,6 +140,7 @@ KNOWN_GAPS: dict[str, str] = {
     "get_db_schema": "Search Config dialog helper; SDK method lands in plan Phase 5 (SDK parity)",
     "get_preflight": "connector preflight is app-only until plan Phase 5 (SDK parity)",
     "get_activation_stats": "dashboard activation card; app-only",
+    "bulk_classify": "Data Catalog bulk classify; done in the app table (select rows / all), not the SDK",
     "list_team_invites": "team invites are managed in the app (Organization settings)",
     "create_team_invite": "team invites are managed in the app (Organization settings)",
     "revoke_team_invite": "team invites are managed in the app (Organization settings)",
