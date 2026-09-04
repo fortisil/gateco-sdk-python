@@ -179,6 +179,36 @@ class ConnectorsResource:
         )
         return data or {}
 
+    async def set_embedding_profile(
+        self,
+        connector_id: str,
+        *,
+        provider: str = "openai",
+        model: str | None = None,
+        dimensions: int | None = None,
+        base_url: str | None = None,
+    ) -> dict[str, Any]:
+        """Declare the query-embedding profile for a connector (write-once).
+
+        For a connector pointed at an existing corpus that was not ingested through
+        Gateco, this makes server-side text-query embedding match the corpus's vector
+        space, avoiding a dimension mismatch. ``openai_compatible`` requires both
+        ``base_url`` and ``model``. It cannot be changed once set.
+        """
+        body: dict[str, Any] = {"provider": provider}
+        if model is not None:
+            body["model"] = model
+        if dimensions is not None:
+            body["dimensions"] = dimensions
+        if base_url is not None:
+            body["base_url"] = base_url
+        data = await self._client._request(
+            "PATCH",
+            f"/api/connectors/{connector_id}/embedding-profile",
+            json=body,
+        )
+        return data or {}
+
     # ------------------------------------------------------------------
     # Coverage
     # ------------------------------------------------------------------

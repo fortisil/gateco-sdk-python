@@ -662,6 +662,9 @@ class _SyncConnectorsProxy(_SyncProxy):
     def update_ingestion_config(self, connector_id: str, ingestion_config: dict) -> dict:
         return self._run(self._async.update_ingestion_config(connector_id, ingestion_config))
 
+    def set_embedding_profile(self, connector_id: str, *, provider: str = "openai", model: str | None = None, dimensions: int | None = None, base_url: str | None = None) -> dict:
+        return self._run(self._async.set_embedding_profile(connector_id, provider=provider, model=model, dimensions=dimensions, base_url=base_url))
+
     def get_coverage(self, connector_id: str) -> Any:
         return self._run(self._async.get_coverage(connector_id))
 

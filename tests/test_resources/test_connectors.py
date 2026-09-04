@@ -225,3 +225,32 @@ class TestConnectorsListAll:
         assert len(items) == 2
         assert items[0].id == "c1"
         assert items[1].id == "c2"
+
+
+class TestConnectorEmbeddingProfile:
+    @pytest.mark.asyncio
+    async def test_set_embedding_profile(self, authed_client, mock_api):
+        import json as _json
+
+        route = mock_api.patch("/api/connectors/c1/embedding-profile").respond(
+            200,
+            json={
+                "id": "c1", "name": "BYO", "type": "neon", "config": {},
+                "ingestion_config": {
+                    "embedding_provider": "openai_compatible",
+                    "embedding_model": "bge-small",
+                    "embedding_dimensions": 384,
+                    "embedding_base_url": "http://localhost:1234/v1",
+                },
+            },
+        )
+        result = await authed_client.connectors.set_embedding_profile(
+            "c1", provider="openai_compatible", model="bge-small",
+            dimensions=384, base_url="http://localhost:1234/v1",
+        )
+        assert result["ingestion_config"]["embedding_provider"] == "openai_compatible"
+        sent = _json.loads(route.calls[0].request.content)
+        assert sent == {
+            "provider": "openai_compatible", "model": "bge-small",
+            "dimensions": 384, "base_url": "http://localhost:1234/v1",
+        }

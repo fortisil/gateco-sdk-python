@@ -138,7 +138,6 @@ KNOWN_GAPS: dict[str, str] = {
     "update_pipeline": "pipelines are app-managed in v1; SDK exposes create/get/list/run history",
     "run_pipeline": "pipelines are app-managed in v1; scheduled by the worker",
     "get_db_schema": "Search Config dialog helper; SDK method lands in plan Phase 5 (SDK parity)",
-    "set_embedding_profile": "connector embedding profile is declared in the Search Config UI during setup; SDK method is a fast-follow",
     "get_preflight": "connector preflight is app-only until plan Phase 5 (SDK parity)",
     "get_activation_stats": "dashboard activation card; app-only",
     "list_team_invites": "team invites are managed in the app (Organization settings)",
