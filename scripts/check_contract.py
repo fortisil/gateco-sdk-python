@@ -36,6 +36,7 @@ _RESOURCE_MAP: dict[str, tuple[str, str, str] | None] = {
     "/api/scim": None,                   # the IdP calls us
     "/api/benchmark": None,              # Performance Self-Test: in-app, login-gated by ruling (2026-08-31)
     "/api/capabilities": None,           # public capability matrix consumed by the app
+    "/api/help": None,                   # Ask AI: console-only UI surface, not a customer API
     "/api/auth": ("auth", "AuthResource", "auth"),
     "/api/plans": ("billing", "BillingResource", "billing"),
     "/api/checkout": ("billing", "BillingResource", "billing"),
