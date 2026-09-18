@@ -282,6 +282,7 @@ class AsyncGatecoClient:
         json: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         authenticate: bool = True,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any] | None:
         """Send an authenticated request, refreshing the token if needed.
 
@@ -292,27 +293,33 @@ class AsyncGatecoClient:
             params: Query parameters.
             authenticate: Whether to attach auth headers. Set ``False`` for
                 login/signup/refresh which supply their own credentials.
+            headers: Extra request headers (e.g. ``X-End-User-Token``). Merged
+                over the auth headers; auth headers always win on conflict.
         """
-        headers: dict[str, str] = {}
+        extra = dict(headers or {})
 
+        def _merged(auth: dict[str, str]) -> dict[str, str]:
+            return {**extra, **auth}
+
+        auth_headers: dict[str, str] = {}
         if authenticate:
             # Primary refresh check: proactively refresh if token is near expiry.
             if self._token_manager.needs_refresh():
                 await self._do_refresh()
-            headers = self._token_manager.get_auth_headers()
+            auth_headers = self._token_manager.get_auth_headers()
 
         try:
             return await self._transport.request(
-                method, path, json=json, params=params, headers=headers
+                method, path, json=json, params=params, headers=_merged(auth_headers)
             )
         except AuthenticationError:
             if not authenticate or not self._token_manager.refresh_token:
                 raise
             # Fallback refresh on 401: token may have been revoked server-side.
             await self._do_refresh()
-            headers = self._token_manager.get_auth_headers()
+            auth_headers = self._token_manager.get_auth_headers()
             return await self._transport.request(
-                method, path, json=json, params=params, headers=headers
+                method, path, json=json, params=params, headers=_merged(auth_headers)
             )
 
     async def _upload(

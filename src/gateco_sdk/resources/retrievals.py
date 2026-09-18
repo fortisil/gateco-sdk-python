@@ -11,6 +11,11 @@ if TYPE_CHECKING:
     from gateco_sdk.client import AsyncGatecoClient
 
 
+def _subject_headers(end_user_token: str | None) -> dict[str, str] | None:
+    """The X-End-User-Token header, or None so no header is sent at all."""
+    return {"X-End-User-Token": end_user_token} if end_user_token else None
+
+
 class RetrievalsResource:
     """Namespace for retrieval endpoints.
 
@@ -34,6 +39,7 @@ class RetrievalsResource:
         alpha: float | None = None,
         pattern_type: str | None = None,
         case_sensitive: bool | None = None,
+        end_user_token: str | None = None,
     ) -> SecuredRetrieval:
         """Execute a permission-gated retrieval.
 
@@ -49,6 +55,13 @@ class RetrievalsResource:
             alpha: Hybrid weight (1.0=all-vector, 0.0=all-keyword). Hybrid only.
             pattern_type: Grep pattern type — "substring" or "regex". Grep only.
             case_sensitive: Case-sensitive grep matching. Grep only.
+            end_user_token: The end user's own identity token (from your login
+                flow), sent as ``X-End-User-Token``. Gateco verifies it against
+                the issuing identity provider's JWKS and refuses the request if
+                it names a different principal than ``principal_id``. Required
+                when the organization's ``subject_verification`` is
+                ``"verified_token"``; optional (but must verify if sent) under
+                ``"none"``. See ``SecuredRetrieval.subject_verified``.
         """
         body: dict[str, Any] = {
             "principal_id": principal_id,
@@ -74,7 +87,8 @@ class RetrievalsResource:
             body["case_sensitive"] = case_sensitive
 
         data = await self._client._request(
-            "POST", "/api/retrievals/execute", json=body
+            "POST", "/api/retrievals/execute", json=body,
+            headers=_subject_headers(end_user_token),
         )
         return SecuredRetrieval.model_validate(data)
 
@@ -123,6 +137,7 @@ class RetrievalsResource:
         connector_id: str,
         candidates: list[dict[str, Any]],
         include_trace: bool = False,
+        end_user_token: str | None = None,
     ) -> SecuredRetrieval:
         """Apply policy filtering to externally-sourced retrieval candidates.
 
@@ -132,6 +147,8 @@ class RetrievalsResource:
             candidates: List of candidate dicts with vector_id, score, text,
                 and optionally resource_id or metadata.
             include_trace: Whether to include full policy trace.
+            end_user_token: The end user's identity token, sent as
+                ``X-End-User-Token``. See ``execute``.
         """
         body: dict[str, Any] = {
             "principal_id": principal_id,
@@ -140,7 +157,8 @@ class RetrievalsResource:
             "include_trace": include_trace,
         }
         data = await self._client._request(
-            "POST", "/api/retrievals/filter", json=body
+            "POST", "/api/retrievals/filter", json=body,
+            headers=_subject_headers(end_user_token),
         )
         return SecuredRetrieval.model_validate(data)
 

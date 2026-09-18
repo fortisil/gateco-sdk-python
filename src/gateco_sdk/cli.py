@@ -316,6 +316,9 @@ async def _cmd_retrieve(args: argparse.Namespace) -> None:
         if getattr(args, "case_sensitive", False):
             kwargs["case_sensitive"] = True
 
+    if getattr(args, "end_user_token", None):
+        kwargs["end_user_token"] = args.end_user_token
+
     async with _get_client() as client:
         result = await client.retrievals.execute(
             principal_id=args.principal_id,
@@ -701,6 +704,13 @@ def _build_parser() -> argparse.ArgumentParser:
     retrieve_parser.add_argument(
         "--case-sensitive", action="store_true",
         help="Case-sensitive grep matching",
+    )
+    retrieve_parser.add_argument(
+        "--end-user-token", default=None,
+        help=(
+            "The end user's identity token (JWT from your IdP), sent as X-End-User-Token. "
+            "Required when the org's subject_verification is verified_token."
+        ),
     )
 
     # -- filter -------------------------------------------------------------

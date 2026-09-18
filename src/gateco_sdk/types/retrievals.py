@@ -135,7 +135,7 @@ class SecuredRetrieval(BaseModel):
     warnings: list[str] = []
 
     @model_validator(mode="after")
-    def _derive_counts(self) -> "SecuredRetrieval":
+    def _derive_counts(self) -> SecuredRetrieval:
         # 0cc-b: the API reports counts as *_chunks and does not send the *_count
         # aggregates, so mirror them here instead of leaving them at 0.
         self.granted_count = self.granted_count or self.allowed_chunks
@@ -148,6 +148,16 @@ class SecuredRetrieval(BaseModel):
     connector_latency_ms: float | None = None
     metadata: dict[str, Any] = {}
     search_mode: str | None = None
+    # Who asserted the subject (migration 051): "user" for a console session
+    # (actor_id set) or "api_key" for a machine credential (api_key_id set,
+    # actor_id None). None on records written before the column existed.
+    actor_type: str | None = None
+    actor_name: str | None = None
+    actor_id: str | None = None
+    api_key_id: str | None = None
+    # True only when an X-End-User-Token was presented, verified against the
+    # issuer's JWKS, and named this exact principal (migration 052).
+    subject_verified: bool = False
     keyword_latency_ms: float | None = None
     vector_latency_ms: float | None = None
     pattern_type: str | None = None

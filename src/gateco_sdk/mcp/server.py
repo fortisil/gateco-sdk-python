@@ -31,6 +31,7 @@ def create_server() -> FastMCP:
         alpha: float | None = None,
         pattern_type: str | None = None,
         case_sensitive: bool | None = None,
+        end_user_token: str | None = None,
     ) -> str:
         """Permission-aware retrieval through Gateco.
 
@@ -56,6 +57,13 @@ def create_server() -> FastMCP:
             alpha: Hybrid weight 0.0-1.0 (1.0=all-vector, 0.0=all-keyword). Hybrid only.
             pattern_type: "substring" or "regex". Grep only.
             case_sensitive: Case-sensitive matching. Grep only.
+            end_user_token: The signed-in end user's own identity token (a JWT
+                from the organization's identity provider), if this agent has
+                one. Gateco verifies it and refuses the call if it names a
+                different principal than principal_id/email resolve to.
+                Required when the organization has set
+                subject_verification=verified_token; otherwise optional.
+                Never fabricate or reuse one from another user.
         """
         try:
             return await handle_retrieve(
@@ -65,6 +73,7 @@ def create_server() -> FastMCP:
                 pattern_type=pattern_type,
                 case_sensitive=case_sensitive,
                 email=email,
+                end_user_token=end_user_token,
             )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc
@@ -78,6 +87,7 @@ def create_server() -> FastMCP:
         top_k: int = 15,
         search_mode: str = "vector",
         alpha: float | None = None,
+        end_user_token: str | None = None,
     ) -> str:
         """Grounded answer synthesis through Gateco (Growth+ plan required).
 
@@ -97,6 +107,8 @@ def create_server() -> FastMCP:
             top_k: Max context chunks (default: 15).
             search_mode: Search mode — "vector", "keyword", or "hybrid" (not grep).
             alpha: Hybrid weight 0.0-1.0. Hybrid only.
+            end_user_token: The signed-in end user's identity token, if this
+                agent has one. See gateco_retrieve.
         """
         try:
             return await handle_ask(
@@ -104,6 +116,7 @@ def create_server() -> FastMCP:
                 search_mode=search_mode,
                 alpha=alpha,
                 email=email,
+                end_user_token=end_user_token,
             )
         except _ToolError as exc:
             raise ValueError(str(exc)) from exc

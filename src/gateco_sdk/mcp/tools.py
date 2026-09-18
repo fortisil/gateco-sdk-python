@@ -30,9 +30,43 @@ from gateco_sdk.mcp.formatters import (
     format_simulation,
 )
 
+# Verified end-user subject refusals (403). Each is a different situation and
+# the agent must give different advice: a missing header is a caller decision,
+# an unknown issuer is an admin configuration gap, an invalid token needs a
+# fresh one, and a MISMATCH is a bug in the caller, never a permissions denial.
+_SUBJECT_CODES = {
+    "SUBJECT_TOKEN_REQUIRED": (
+        "This organization requires a verified end-user token on every retrieval. "
+        "Pass the signed-in user's identity token as end_user_token. If this agent has "
+        "no end user (a batch or background job), the organization must stay in "
+        "subject_verification=none."
+    ),
+    "SUBJECT_TOKEN_ISSUER_UNKNOWN": (
+        "The end-user token's issuer is not configured on any identity provider in this "
+        "organization. An admin must set oidc_config (issuer, audience, jwks_uri) on the "
+        "provider that issued it."
+    ),
+    "SUBJECT_TOKEN_INVALID": (
+        "The end-user token failed verification (signature, expiry, audience, or not a JWT). "
+        "Obtain a fresh token for the signed-in user; do not retry with the same one."
+    ),
+    "SUBJECT_NOT_RESOLVED": (
+        "The end-user token verified, but no active principal has that subject under the "
+        "issuing provider. The provider may need a sync, or subject_claim is mis-mapped."
+    ),
+    "SUBJECT_MISMATCH": (
+        "The end-user token names a DIFFERENT principal than the one this call asked for. "
+        "This is a caller bug, not a permissions denial: the agent is asserting a subject the "
+        "user's token does not support. Fix the principal_id or email being passed."
+    ),
+}
+
 
 def _handle_error(exc: GatecoError) -> str:
     """Map a ``GatecoError`` to a human-readable error string."""
+    subject_msg = _SUBJECT_CODES.get(getattr(exc, "code", "") or "")
+    if subject_msg:
+        return subject_msg
     if isinstance(exc, AuthenticationError):
         return (
             "Authentication failed. Run `gateco login`, or set GATECO_API_KEY to a key that has "
@@ -98,6 +132,7 @@ async def handle_retrieve(
     pattern_type: str | None = None,
     case_sensitive: bool | None = None,
     email: str | None = None,
+    end_user_token: str | None = None,
 ) -> str:
     """Permission-aware retrieval with configurable search mode.
 
@@ -130,6 +165,11 @@ async def handle_retrieve(
                 kwargs["pattern_type"] = pattern_type
             if case_sensitive is not None:
                 kwargs["case_sensitive"] = case_sensitive
+            if end_user_token:
+                # Sent as X-End-User-Token: the server verifies it against the
+                # issuer's JWKS and refuses the call if it names a different
+                # principal than the one resolved above.
+                kwargs["end_user_token"] = end_user_token
 
             result = await client.retrievals.execute(**kwargs)
         return format_retrieval(result)
@@ -145,6 +185,7 @@ async def handle_ask(
     search_mode: str = "vector",
     alpha: float | None = None,
     email: str | None = None,
+    end_user_token: str | None = None,
 ) -> str:
     """Grounded answer synthesis (Growth+).
 
@@ -173,6 +214,8 @@ async def handle_ask(
                 kwargs["search_mode"] = search_mode
             if alpha is not None:
                 kwargs["alpha"] = alpha
+            if end_user_token:
+                kwargs["end_user_token"] = end_user_token
 
             result = await client.answers.execute(query, **kwargs)
         output = format_answer(result)

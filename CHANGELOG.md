@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.12.0] - 2026-09-18
+
+### Added
+- `end_user_token=` on `client.retrievals.execute`, `client.retrievals.filter` and
+  `client.answers.execute`: the end user's own identity token, sent as `X-End-User-Token`.
+  Gateco verifies it against the issuing identity provider's JWKS and refuses the request
+  (`403 SUBJECT_MISMATCH`) if it names a different principal than `principal_id`. Required
+  when the organization's `subject_verification` is `"verified_token"`.
+- `SecuredRetrieval.subject_verified` (bool) and `actor_type` / `actor_name` / `actor_id` /
+  `api_key_id`: who asserted the subject on each retrieval record, and whether the assertion
+  was verified.
+- `AsyncGatecoClient._request(headers=...)` for per-call headers (internal).
+
 ## [1.11.1] - 2026-09-04
 
 ### Fixed

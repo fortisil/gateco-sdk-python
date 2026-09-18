@@ -29,6 +29,7 @@ class AnswersResource:
         filters: dict[str, Any] | None = None,
         search_mode: str | None = None,
         alpha: float | None = None,
+        end_user_token: str | None = None,
     ) -> Answer:
         """Execute a grounded answer synthesis.
 
@@ -40,6 +41,8 @@ class AnswersResource:
             filters: Optional filter dict for scoping results.
             search_mode: Search mode for retrieval (vector/keyword/hybrid). Grep excluded.
             alpha: Hybrid weight 0.0-1.0. Only for hybrid mode.
+            end_user_token: The end user's identity token, sent as
+                ``X-End-User-Token``. See ``client.retrievals.execute``.
         """
         body: dict[str, Any] = {
             "query": query,
@@ -56,6 +59,7 @@ class AnswersResource:
             body["alpha"] = alpha
 
         data = await self._client._request(
-            "POST", "/api/answers/execute", json=body
+            "POST", "/api/answers/execute", json=body,
+            headers={"X-End-User-Token": end_user_token} if end_user_token else None,
         )
         return Answer.model_validate(data)
