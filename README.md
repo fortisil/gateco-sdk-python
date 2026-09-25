@@ -76,7 +76,10 @@ client.login("user@example.com", "password")
 ```
 
 The API key is sent as the `X-API-Key` header on every request. Set it via the
-`GATECO_API_KEY` environment variable when using the CLI or MCP server.
+`GATECO_API_KEY` environment variable when using the CLI or MCP server. Two MCP tools,
+`gateco_check_access` and `gateco_list_groups`, call session-only endpoints and need a
+stored `gateco login` instead; the key takes precedence over a stored login, so unset it
+for those.
 
 ---
 
@@ -449,9 +452,10 @@ gateco-mcp
 |------|-------------|
 | `gateco_retrieve` | Permission-aware retrieval (vector/keyword/hybrid/grep) |
 | `gateco_ask` | Grounded answer synthesis with search modes (Team+) |
-| `gateco_check_access` | Dry-run access simulation (Growth+) |
+| `gateco_check_access` | Dry-run access simulation (Growth+). **User session only** (`gateco login`); not callable with an API key |
 | `gateco_list_connectors` | List connectors with readiness levels |
 | `gateco_list_principals` | List identity principals |
+| `gateco_list_groups` | List groups (IdP-synced and local directory) with live member counts. **User session only** (`gateco login`); not callable with an API key |
 | `gateco_resolve_principal` | Resolve a principal by email or provider subject |
 
 All tools return markdown-formatted text. Denied content is never exposed — only denial

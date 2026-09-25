@@ -88,6 +88,29 @@ class TestHandleRetrieve:
                 await handle_retrieve("conn-1", "q", "user-1")
 
     @pytest.mark.asyncio
+    async def test_session_only_endpoint_never_suggests_an_api_key(self):
+        """gateco_list_groups hits GET /api/groups, a session-only route. With
+        GATECO_API_KEY set the server answers 401 AUTH_JWT_REQUIRED; the tool must
+        say so instead of sending the user to an API key (cold run 2026-09-25,
+        parity matrix row 4)."""
+        from gateco_sdk.mcp.tools import handle_list_groups
+
+        client = _mock_client()
+        client.groups.list = AsyncMock(side_effect=AuthenticationError(
+            "This endpoint requires a user session; API keys are not accepted here.",
+            code="AUTH_JWT_REQUIRED",
+        ))
+        with patch("gateco_sdk.cli._get_client", return_value=client):
+            with pytest.raises(_ToolError) as exc:
+                await handle_list_groups(1, 20, None)
+        text = str(exc.value)
+        assert "needs a user session" in text
+        assert "gateco login" in text
+        assert "Unset GATECO_API_KEY" in text
+        # The old text: "set GATECO_API_KEY to a key that has the `retrieve` scope".
+        assert "to a key that has" not in text
+
+    @pytest.mark.asyncio
     async def test_not_found_error(self):
         client = _mock_client()
         client.retrievals.execute = AsyncMock(

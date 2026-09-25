@@ -3,6 +3,10 @@
 ## [1.12.1] - 2026-09-25
 
 ### Fixed
+- MCP: `gateco_check_access` and `gateco_list_groups` call session-only endpoints. When
+  `GATECO_API_KEY` was set they failed and the error text told the user to set an API
+  key, which no scope could make work. The message now says the tool needs a user
+  session; both tools are marked as such in the tool table and their docstrings.
 - `gateco login` no longer requires `--password` on the command line: omit it to be
   prompted on a terminal, or pipe it on stdin. Passing it as a flag still works but puts
   the password in shell history and in `ps` output.

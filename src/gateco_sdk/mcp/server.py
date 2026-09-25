@@ -129,6 +129,8 @@ def create_server() -> FastMCP:
     ) -> str:
         """Dry-run access simulation through Gateco (Growth+ plan required).
 
+        Needs a user session (`gateco login`); an API key cannot call this tool.
+
         Evaluates what a principal can and cannot access without
         performing an actual retrieval. Useful for debugging policy
         configurations.
@@ -190,7 +192,9 @@ def create_server() -> FastMCP:
         per_page: int = 20,
         search: str | None = None,
     ) -> str:
-        """List IdP-synced groups known to Gateco.
+        """List groups known to Gateco (IdP-synced and local directory).
+
+        Needs a user session (`gateco login`); an API key cannot call this tool.
 
         Returns group names, source identity providers, live member counts
         (active members only), and IDs.
