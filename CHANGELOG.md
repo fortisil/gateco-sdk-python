@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.12.1] - 2026-09-25
+
+### Fixed
+- `gateco login` no longer requires `--password` on the command line: omit it to be
+  prompted on a terminal, or pipe it on stdin. Passing it as a flag still works but puts
+  the password in shell history and in `ps` output.
+- The authentication error hint now names the credential that would work. When the
+  server says API keys are not accepted on an endpoint, the CLI no longer tells you to
+  set `GATECO_API_KEY`; when `GATECO_API_KEY` is set, it says so, since it takes
+  precedence over a stored session.
+- `gateco ingest` accepts PDF, Word, PowerPoint, Excel, CSV and other document types by
+  uploading them through the file endpoint (`.txt`/`.md` are still sent as text).
+- `gateco_sdk.__version__` reported `1.11.1` on the `1.12.0` release; the two version
+  strings are now the same.
+
 ## [1.12.0] - 2026-09-18
 
 ### Added

@@ -194,12 +194,29 @@ async def _cmd_login(args: argparse.Namespace) -> None:
         )
     from gateco_sdk.client import AsyncGatecoClient
 
+    password = args.password
+    if not password:
+        # Never force the password onto the command line: it lands in shell
+        # history and in `ps` output for every other process (cold run
+        # 2026-09-25, defect 6). Prompt on a terminal, read stdin otherwise.
+        if sys.stdin.isatty():
+            import getpass
+
+            password = getpass.getpass("Password: ")
+        else:
+            password = sys.stdin.readline().rstrip("\r\n")
+    if not password:
+        _error(
+            "Password required: run `gateco login --email ...` on a terminal to be "
+            "prompted, pipe it on stdin, or pass --password (not recommended: shell history)."
+        )
+
     base_url = args.base_url
     raw_base = base_url
     raw_base = raw_base.removesuffix("/api")
 
     async with AsyncGatecoClient(raw_base) as client:
-        token_resp = await client.login(args.email, args.password)
+        token_resp = await client.login(args.email, password)
 
     _save_credentials(
         token_resp.access_token,
@@ -216,10 +233,6 @@ async def _cmd_ingest(args: argparse.Namespace) -> None:
         _error(f"File not found: {file_path}")
 
     suffix = file_path.suffix.lower()
-    if suffix not in (".txt", ".md"):
-        _error(f"Unsupported file type '{suffix}'. Only .txt and .md files are supported.")
-
-    text = file_path.read_text(encoding="utf-8")
     external_resource_id = file_path.name
 
     kwargs: dict[str, Any] = {}
@@ -231,12 +244,24 @@ async def _cmd_ingest(args: argparse.Namespace) -> None:
         kwargs["domain"] = args.domain
 
     async with _get_client() as client:
-        result = await client.ingest.document(
-            connector_id=args.connector_id,
-            external_resource_id=external_resource_id,
-            text=text,
-            **kwargs,
-        )
+        if suffix in (".txt", ".md"):
+            text = file_path.read_text(encoding="utf-8")
+            result = await client.ingest.document(
+                connector_id=args.connector_id,
+                external_resource_id=external_resource_id,
+                text=text,
+                **kwargs,
+            )
+        else:
+            # PDF, Word, PowerPoint, Excel, CSV, ... go through the file endpoint,
+            # where the server extracts the text. Until 1.12.1 the CLI refused
+            # everything but .txt/.md (cold run 2026-09-25, defect 9).
+            result = await client.ingest.file(
+                connector_id=args.connector_id,
+                file_path=str(file_path),
+                external_resource_id=external_resource_id,
+                **kwargs,
+            )
     _output(result)
 
 
@@ -652,7 +677,12 @@ def _build_parser() -> argparse.ArgumentParser:
     # -- login --------------------------------------------------------------
     login_parser = subparsers.add_parser("login", help="Authenticate and store credentials")
     login_parser.add_argument("--email", required=True, help="Account email")
-    login_parser.add_argument("--password", required=True, help="Account password")
+    login_parser.add_argument(
+        "--password",
+        default=None,
+        help="Account password. Omit it to be prompted (or pipe it on stdin); "
+        "passing it here puts it in your shell history.",
+    )
     login_parser.add_argument(
         "--base-url",
         default=_DEFAULT_BASE_URL,
@@ -660,8 +690,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     # -- ingest -------------------------------------------------------------
-    ingest_parser = subparsers.add_parser("ingest", help="Ingest a single text file")
-    ingest_parser.add_argument("file", help="Path to file (.txt or .md)")
+    ingest_parser = subparsers.add_parser(
+        "ingest", help="Ingest a single file (.txt/.md as text; PDF, Office, CSV via upload)"
+    )
+    ingest_parser.add_argument(
+        "file", help="Path to the file (.txt/.md are sent as text; other types are uploaded)"
+    )
     ingest_parser.add_argument("--connector-id", required=True, help="Target connector ID")
     ingest_parser.add_argument("--classification", default=None, help="Classification label")
     ingest_parser.add_argument("--sensitivity", default=None, help="Sensitivity level")
@@ -938,11 +972,39 @@ def main() -> None:
         from gateco_sdk.errors import AuthenticationError
 
         if isinstance(exc, AuthenticationError):
-            _error(
-                f"{exc}. Your session is missing, expired or revoked: run `gateco login` "
-                "again, or set GATECO_API_KEY to a key with the scopes this command needs."
-            )
+            _error(_auth_hint(exc))
         _error(str(exc))
+
+
+def _auth_hint(exc: Exception) -> str:
+    """Name the credential that would actually work.
+
+    Until 1.12.1 every AuthenticationError got one hint that ended "or set
+    GATECO_API_KEY to a key with the scopes this command needs", including the
+    case where the server had just said API keys are not accepted on this
+    endpoint: an impossible loop, with a doubled period (cold run 2026-09-25,
+    defect 20).
+    """
+    message = str(exc).rstrip(".")
+    key_set = bool(os.environ.get("GATECO_API_KEY"))
+    if "API keys are not accepted" in message or "requires a user session" in message:
+        if key_set:
+            return (
+                f"{message}. GATECO_API_KEY is set and takes precedence over your stored "
+                "session, and this command needs a user session: unset GATECO_API_KEY, "
+                "then run `gateco login`."
+            )
+        return f"{message}. This command needs a user session: run `gateco login`."
+    if key_set:
+        return (
+            f"{message}. GATECO_API_KEY is set and is the credential in use: check it is a "
+            "live key with the scopes this command needs, or unset it and run `gateco login` "
+            "to use a user session instead."
+        )
+    return (
+        f"{message}. Your session is missing, expired or revoked: run `gateco login` again, "
+        "or set GATECO_API_KEY to a key with the scopes this command needs."
+    )
 
 
 if __name__ == "__main__":

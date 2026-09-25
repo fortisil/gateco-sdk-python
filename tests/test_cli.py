@@ -336,3 +336,134 @@ class TestSessionHygiene:
         err = capsys.readouterr().err
         assert "gateco login" in err, err
         assert "GATECO_API_KEY" in err, err
+
+
+class TestColdRunCliFixes:
+    """Cold run 2026-09-25: defects 6 (password on the command line), 20 (the auth
+    hint that sent users into an impossible loop) and 9 (only .txt/.md ingest)."""
+
+    def test_login_password_is_optional_on_the_command_line(self) -> None:
+        from gateco_sdk.cli import _build_parser
+
+        args = _build_parser().parse_args(["login", "--email", "a@b.com"])
+        assert args.password is None
+
+    def test_login_reads_the_password_from_stdin_when_not_a_terminal(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        import io
+
+        cred_dir = tmp_path / ".gateco"
+        monkeypatch.setattr("gateco_sdk.cli._CRED_DIR", cred_dir)
+        monkeypatch.setattr("gateco_sdk.cli._CRED_FILE", cred_dir / "credentials.json")
+        monkeypatch.delenv("GATECO_API_KEY", raising=False)
+
+        mock_token_resp = MagicMock()
+        mock_token_resp.access_token = "a"
+        mock_token_resp.refresh_token = "r"
+        mock_token_resp.user = None
+        mock_client = AsyncMock()
+        mock_client.login = AsyncMock(return_value=mock_token_resp)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        monkeypatch.setattr("sys.stdin", io.StringIO("s3cret\n"))
+        with patch("gateco_sdk.client.AsyncGatecoClient", return_value=mock_client):
+            monkeypatch.setattr("sys.argv", ["gateco", "login", "--email", "a@b.com"])
+            main()
+
+        mock_client.login.assert_awaited_once_with("a@b.com", "s3cret")
+        assert json.loads(capsys.readouterr().out)["status"] == "ok"
+
+    def test_login_without_any_password_source_is_a_clear_error(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        import io
+
+        monkeypatch.setattr("sys.stdin", io.StringIO(""))
+        monkeypatch.setattr("sys.argv", ["gateco", "login", "--email", "a@b.com"])
+        with pytest.raises(SystemExit) as exc:
+            main()
+        assert exc.value.code == 1
+        assert "Password required" in capsys.readouterr().err
+
+    def test_session_only_endpoint_hint_never_suggests_an_api_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from gateco_sdk.cli import _auth_hint
+        from gateco_sdk.errors import AuthenticationError
+
+        exc = AuthenticationError(
+            "This endpoint requires a user session; API keys are not accepted here.",
+            code="AUTH_JWT_REQUIRED",
+        )
+        monkeypatch.delenv("GATECO_API_KEY", raising=False)
+        hint = _auth_hint(exc)
+        assert "gateco login" in hint
+        assert "set GATECO_API_KEY" not in hint
+        assert ".." not in hint
+
+        monkeypatch.setenv("GATECO_API_KEY", "gk_test")
+        hint = _auth_hint(exc)
+        assert "unset GATECO_API_KEY" in hint and "gateco login" in hint
+
+    def test_expired_session_hint_still_offers_both_routes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from gateco_sdk.cli import _auth_hint
+        from gateco_sdk.errors import AuthenticationError
+
+        monkeypatch.delenv("GATECO_API_KEY", raising=False)
+        hint = _auth_hint(AuthenticationError("Token has expired", code="AUTH_TOKEN_EXPIRED"))
+        assert "gateco login" in hint and "GATECO_API_KEY" in hint
+
+    def test_ingest_routes_a_pdf_through_the_file_endpoint(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        pdf = tmp_path / "דוחות כספיים 2021.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
+
+        mock_client = AsyncMock()
+        mock_client.ingest = MagicMock()
+        mock_client.ingest.file = AsyncMock(return_value={"status": "success"})
+        mock_client.ingest.document = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("gateco_sdk.cli._get_client", return_value=mock_client):
+            monkeypatch.setattr(
+                "sys.argv",
+                ["gateco", "ingest", str(pdf), "--connector-id", "c1", "--domain", "finance"],
+            )
+            main()
+
+        mock_client.ingest.file.assert_awaited_once_with(
+            connector_id="c1",
+            file_path=str(pdf),
+            external_resource_id="דוחות כספיים 2021.pdf",
+            domain="finance",
+        )
+        mock_client.ingest.document.assert_not_awaited()
+        assert json.loads(capsys.readouterr().out)["status"] == "success"
+
+    def test_ingest_still_sends_text_files_as_text(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+    ) -> None:
+        txt = tmp_path / "notes.md"
+        txt.write_text("hello", encoding="utf-8")
+
+        mock_client = AsyncMock()
+        mock_client.ingest = MagicMock()
+        mock_client.ingest.document = AsyncMock(return_value={"status": "success"})
+        mock_client.ingest.file = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("gateco_sdk.cli._get_client", return_value=mock_client):
+            monkeypatch.setattr("sys.argv", ["gateco", "ingest", str(txt), "--connector-id", "c1"])
+            main()
+
+        mock_client.ingest.document.assert_awaited_once_with(
+            connector_id="c1", external_resource_id="notes.md", text="hello",
+        )
+        mock_client.ingest.file.assert_not_awaited()
