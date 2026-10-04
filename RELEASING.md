@@ -47,7 +47,10 @@ machine. The rest is yours.
 
 10. **Read back by hand**: `pip index versions gateco` (or the PyPI page),
     the registry `versions/latest`, and `pip install "gateco[mcp]==<version>"` in a clean
-    venv followed by `gateco --version` and `gateco-mcp --help`.
+    venv followed by `python -c "import gateco_sdk; print(gateco_sdk.__version__)"` and
+    `python -c "import gateco_sdk.mcp.server"` (the CLI has no `--version` flag; found on
+    the 1.13.0 read-back, 4 Oct 2026). For npm: `npm view @gateco/sdk version`, allowing a
+    minute for propagation (1.13.0 read 1.12.0 for about thirty seconds after publish).
 11. **Subtree mirror**: `git subtree push --prefix=gateco/packages/sdk-python sdk-python main`.
 12. **Tell Elinor** (marketing owns third-party listings: mcpindex, ConnectorZone and the
     rest scrape or pin a version; nothing points them at the new one by itself) and
