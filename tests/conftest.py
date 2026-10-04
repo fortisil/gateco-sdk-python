@@ -11,7 +11,6 @@ import respx
 
 from gateco_sdk.client import AsyncGatecoClient
 
-
 BASE_URL = "http://test.gateco.local"
 
 
@@ -68,3 +67,10 @@ async def authed_client(mock_api):
     async with AsyncGatecoClient(BASE_URL) as c:
         c._token_manager.set_tokens(make_fresh_jwt(), "refresh-token-value")
         yield c
+
+@pytest.fixture(autouse=True)
+def _no_stored_session(monkeypatch, tmp_path):
+    """Keep the suite hermetic: 1.13.0 clients read ~/.gateco/credentials.json when
+    given no credential, and a developer's real login must never leak into a test.
+    Tests that exercise the fallback point GATECO_CREDENTIALS_FILE at their own file."""
+    monkeypatch.setenv("GATECO_CREDENTIALS_FILE", str(tmp_path / "no-such-credentials.json"))

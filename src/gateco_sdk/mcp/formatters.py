@@ -42,7 +42,11 @@ def _truncate(text: str | None, limit: int = _TEXT_LIMIT) -> str:
 def format_retrieval(result: SecuredRetrieval) -> str:
     """Format a ``SecuredRetrieval`` as markdown."""
     outcome = result.outcome or result.status or "unknown"
-    duration = f"{result.duration_ms:.0f}ms" if result.duration_ms else "n/a"
+    # The execute response carries no top-level timing (retrieval records do,
+    # as duration_ms / latency_ms). Until 1.13.0 this printed "Duration: n/a"
+    # on every live retrieval, which a model reads as a missing measurement.
+    elapsed = result.duration_ms or result.latency_ms
+    duration = f" | **Duration:** {elapsed:.0f}ms" if elapsed else ""
 
     lines = [
         "## Retrieval Results",
@@ -60,8 +64,8 @@ def format_retrieval(result: SecuredRetrieval) -> str:
     lines.append(
         f"**Outcome:** {outcome} | "
         f"**Allowed:** {result.allowed_chunks or result.granted_count} | "
-        f"**Denied:** {result.denied_chunks or result.denied_count} | "
-        f"**Duration:** {duration}"
+        f"**Denied:** {result.denied_chunks or result.denied_count}"
+        f"{duration}"
     )
 
     if search_mode == "grep":

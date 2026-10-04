@@ -6,12 +6,14 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from gateco_sdk.types.labels import Classification, Sensitivity
+
 
 class DataCatalogFilters(BaseModel):
     """Filters for data catalog list queries."""
 
-    classification: str | None = None
-    sensitivity: str | None = None
+    classification: Classification | None = None
+    sensitivity: Sensitivity | None = None
     domain: str | None = None
     label: str | None = None
     source_connector_id: str | None = None

@@ -70,6 +70,12 @@ from gateco_sdk.types.policies import (
     PolicyType,
 )
 from gateco_sdk.types.groups import PrincipalGroup
+from gateco_sdk.types.labels import (
+    CLASSIFICATIONS,
+    SENSITIVITIES,
+    Classification,
+    Sensitivity,
+)
 from gateco_sdk.types.principals import Principal, PrincipalAttributes
 from gateco_sdk.types.retroactive import (
     RetroactiveRegisterRequest,
@@ -86,88 +92,92 @@ from gateco_sdk.types.retrievals import (
 from gateco_sdk.types.simulator import SimulationRequest, SimulationResult
 
 __all__ = [
+    "CLASSIFICATIONS",
+    "SENSITIVITIES",
     # answers
     "Answer",
+    # audit
+    "AuditEvent",
+    "AuditEventType",
+    "AuditExportRequest",
+    "BatchIngestRequest",
+    "BatchIngestResponse",
+    "BindResult",
+    "BindingEntry",
+    "CheckoutRequest",
+    "CheckoutResponse",
     "Citation",
-    # common
-    "PaginationMeta",
-    "PaginatedResponse",
-    # auth
-    "LoginRequest",
-    "SignupRequest",
-    "TokenResponse",
-    "User",
-    "Organization",
+    "Classification",
     # connectors
     "Connector",
-    "CreateConnectorRequest",
-    "TestConnectorResponse",
-    "SearchConfig",
-    "IngestionConfig",
-    "BindingEntry",
-    "BindResult",
     "CoverageDetail",
+    "CreateConnectorRequest",
+    "CreateIdentityProviderRequest",
+    "CreatePipelineRequest",
+    "CreatePolicyRequest",
+    # dashboard
+    "DashboardSparklines",
+    "DashboardStats",
+    "DataCatalogFilters",
+    "DenialReason",
+    "EnvelopeConfig",
+    # retrievals
+    "ExecuteRetrievalRequest",
+    "FilterResult",
+    # data catalog
+    "GatedResource",
+    "GatedResourceDetail",
+    # identity providers
+    "IdentityProvider",
     # ingestion
     "IngestDocumentRequest",
     "IngestDocumentResponse",
-    "BatchIngestRequest",
-    "BatchIngestResponse",
-    "PreEmbeddedChunk",
-    # retrievals
-    "ExecuteRetrievalRequest",
-    "SecuredRetrieval",
-    "RetrievalOutcome",
-    "FilterResult",
-    "DenialReason",
-    "PolicyTrace",
+    "IngestionConfig",
+    "Invoice",
+    # auth
+    "LoginRequest",
+    "Organization",
+    "PaginatedResponse",
+    # common
+    "PaginationMeta",
+    # pipelines
+    "Pipeline",
+    "PipelineRun",
+    # billing
+    "Plan",
+    "PlanFeatures",
+    "PlanLimits",
     # policies
     "Policy",
-    "PolicyRule",
     "PolicyCondition",
-    "CreatePolicyRequest",
-    "PolicyType",
-    "PolicyStatus",
     "PolicyEffect",
-    # identity providers
-    "IdentityProvider",
-    "CreateIdentityProviderRequest",
-    "SyncConfig",
+    "PolicyRule",
+    "PolicyStatus",
+    "PolicyTrace",
+    "PolicyType",
+    "PreEmbeddedChunk",
     # principals
     "Principal",
     "PrincipalAttributes",
     # groups
     "PrincipalGroup",
-    # data catalog
-    "GatedResource",
-    "GatedResourceDetail",
     "ResourceChunk",
-    "DataCatalogFilters",
-    # pipelines
-    "Pipeline",
-    "PipelineRun",
-    "CreatePipelineRequest",
-    "EnvelopeConfig",
-    # billing
-    "Plan",
-    "PlanFeatures",
-    "PlanLimits",
-    "Usage",
-    "UsageMetric",
-    "Invoice",
-    "Subscription",
-    "CheckoutRequest",
-    "CheckoutResponse",
-    # audit
-    "AuditEvent",
-    "AuditEventType",
-    "AuditExportRequest",
-    # simulator
-    "SimulationRequest",
-    "SimulationResult",
-    # dashboard
-    "DashboardSparklines",
-    "DashboardStats",
+    "RetrievalOutcome",
     # retroactive
     "RetroactiveRegisterRequest",
     "RetroactiveRegisterResponse",
+    "SearchConfig",
+    "SecuredRetrieval",
+    "Sensitivity",
+    "SignupRequest",
+    # simulator
+    "SimulationRequest",
+    "SimulationResult",
+    "Subscription",
+    "SyncConfig",
+    "TestConnectorResponse",
+    "TokenResponse",
+    "Usage",
+    "UsageMetric",
+    "User",
 ]

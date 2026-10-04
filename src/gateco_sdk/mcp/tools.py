@@ -71,10 +71,11 @@ def _handle_error(exc: GatecoError) -> str:
         code = getattr(exc, "code", "") or ""
         message = getattr(exc, "message", "") or str(exc)
         if code == "AUTH_JWT_REQUIRED" or "API keys are not accepted" in message:
-            # gateco_check_access and gateco_list_groups call session-only
-            # routes. Until 1.12.1 this branch fell through to the generic
-            # text below and told the user to set an API key that no scope
-            # could make work (the CLI's message-20 loop, on the MCP surface).
+            # gateco_check_access calls a session-only route (and so did
+            # gateco_list_groups before GET /api/groups joined the retrieve
+            # scope on 2026-10-02). Until 1.12.1 this branch fell through to
+            # the generic text below and told the user to set an API key that
+            # no scope could make work (the CLI's message-20 loop, on MCP).
             return (
                 "This tool needs a user session; API keys are not accepted on this endpoint. "
                 "Unset GATECO_API_KEY (it takes precedence over a stored login) and run "

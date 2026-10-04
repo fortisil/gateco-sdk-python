@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from gateco_sdk._pagination import AsyncPaginator, Page
 from gateco_sdk.types.data_catalog import GatedResource, GatedResourceDetail
+from gateco_sdk.types.labels import Classification, Sensitivity
 
 if TYPE_CHECKING:
     from gateco_sdk.client import AsyncGatecoClient
@@ -29,8 +30,8 @@ class DataCatalogResource:
         page: int = 1,
         per_page: int = 20,
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         label: str | None = None,
         source_connector_id: str | None = None,
@@ -66,8 +67,8 @@ class DataCatalogResource:
         self,
         per_page: int = 100,
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         label: str | None = None,
         source_connector_id: str | None = None,
@@ -109,8 +110,8 @@ class DataCatalogResource:
         self,
         resource_id: str,
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         labels: list[str] | None = None,
         encryption_mode: str | None = None,
@@ -136,8 +137,8 @@ class DataCatalogResource:
         self,
         resource_id: str,
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         labels: list[str] | None = None,
     ) -> GatedResource:

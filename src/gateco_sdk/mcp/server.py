@@ -194,7 +194,9 @@ def create_server() -> FastMCP:
     ) -> str:
         """List groups known to Gateco (IdP-synced and local directory).
 
-        Needs a user session (`gateco login`); an API key cannot call this tool.
+        Works with an API key that has the `retrieve` scope (backend from
+        2026-10-02 on) or a user session. An older backend answers that a user
+        session is needed.
 
         Returns group names, source identity providers, live member counts
         (active members only), and IDs.

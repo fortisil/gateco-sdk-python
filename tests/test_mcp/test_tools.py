@@ -89,10 +89,11 @@ class TestHandleRetrieve:
 
     @pytest.mark.asyncio
     async def test_session_only_endpoint_never_suggests_an_api_key(self):
-        """gateco_list_groups hits GET /api/groups, a session-only route. With
-        GATECO_API_KEY set the server answers 401 AUTH_JWT_REQUIRED; the tool must
-        say so instead of sending the user to an API key (cold run 2026-09-25,
-        parity matrix row 4)."""
+        """gateco_check_access hits the simulator, a session-only route (and so
+        did gateco_list_groups until GET /api/groups joined the retrieve scope on
+        2026-10-02; an older backend still answers this way). With GATECO_API_KEY
+        set the server answers 401 AUTH_JWT_REQUIRED; the tool must say so instead
+        of sending the user to an API key (cold run 2026-09-25, parity matrix row 4)."""
         from gateco_sdk.mcp.tools import handle_list_groups
 
         client = _mock_client()

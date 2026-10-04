@@ -76,10 +76,33 @@ client.login("user@example.com", "password")
 ```
 
 The API key is sent as the `X-API-Key` header on every request. Set it via the
-`GATECO_API_KEY` environment variable when using the CLI or MCP server. Two MCP tools,
-`gateco_check_access` and `gateco_list_groups`, call session-only endpoints and need a
-stored `gateco login` instead; the key takes precedence over a stored login, so unset it
-for those.
+`GATECO_API_KEY` environment variable when using the CLI or MCP server. The key takes
+precedence over a stored login.
+
+**No credential at all?** Since 1.13.0 a client constructed with no `api_key`, no
+`GATECO_API_KEY` and no `access_token` reads the session that `gateco login` stored in
+`~/.gateco/credentials.json` (and its `base_url`), and writes refreshed tokens back. One
+login on a machine serves the CLI, the MCP server and your own scripts; do not copy the
+file between machines, because refresh rotates and the two copies would revoke each other.
+
+### Which routes accept an API key
+
+A key carries explicit scopes, chosen when it is created (Settings > API Keys, every plan).
+Everything not listed here needs a user session (`gateco login` or `client.login(...)`);
+a key sent there gets `401 AUTH_JWT_REQUIRED`, and a key without the needed scope gets
+`403 API_KEY_SCOPE_MISSING`.
+
+| Scope | Routes |
+|-------|--------|
+| `retrieve` | `POST /api/retrievals/execute`, `POST /api/retrievals/filter`, `POST /api/answers/execute`, `GET /api/principals`, `GET /api/principals/:id`, `POST /api/principals/resolve`, `GET /api/groups` (since 2026-10-02), `GET /api/connectors` (id, name, type, status) |
+| `ingest` | `POST /api/v1/ingest`, `/batch`, `/file`, `/files`, `DELETE /api/v1/resources/:id`, `/api/v1/ingest/jobs*` |
+| `relationships` | `POST`, `GET`, `DELETE /api/relationships` |
+| `principals` | `POST`, `PATCH`, `DELETE /api/principals` (local directory) |
+| any key | `GET /api/users/me` (reports the key's name and scopes) |
+
+Session only: policies, connector create/update/delete and their search and ingestion
+configs, identity providers, API-key management, audit, retrieval history, billing,
+the access simulator, classification suggestions.
 
 ---
 
@@ -415,6 +438,39 @@ except AuthenticationError:
 
 ---
 
+## CLI
+
+The `gateco` command is installed with the SDK and uses the same credentials.
+
+```bash
+# Log in once; you are prompted for the password (or pipe it on stdin).
+# Passing --password on the command line works but lands in shell history.
+gateco login --email admin@company.com
+
+gateco whoami                       # base URL, credential in use, key scopes
+
+# Connectors: inspect and configure (user session only)
+gateco connectors list
+gateco connectors get <connector_id>
+gateco connectors get-search-config <connector_id>
+gateco connectors set-search-config <connector_id> --json '{"table_name": "docs", "vector_column": "embedding", "content_column": "text"}'
+gateco connectors get-ingestion-config <connector_id>
+gateco connectors set-ingestion-config <connector_id> --file ingestion.json
+
+# Ingest: .txt/.md are sent as text; PDF, Word, PowerPoint, Excel and CSV are uploaded
+gateco ingest report.txt --connector-id <id> --classification confidential --sensitivity high
+gateco ingest "Q3 board deck.pdf" --connector-id <id> --classification confidential --sensitivity high --domain finance
+gateco ingest-batch ./documents --connector-id <id> --glob "*.md"
+
+# Retrieve as a principal (API key with the retrieve scope, or a session)
+gateco retrieve --connector-id <id> --principal-id <id> --query "revenue report" --search-mode hybrid
+```
+
+`--classification` accepts `public`, `internal`, `confidential`, `restricted`;
+`--sensitivity` accepts `low`, `medium`, `high`, `critical` (`gateco ingest --help` lists them).
+
+---
+
 ## MCP Server (Model Context Protocol)
 
 The optional MCP server lets AI agents (Claude Desktop, Cursor, etc.) perform
@@ -455,7 +511,7 @@ gateco-mcp
 | `gateco_check_access` | Dry-run access simulation (Growth+). **User session only** (`gateco login`); not callable with an API key |
 | `gateco_list_connectors` | List connectors with readiness levels |
 | `gateco_list_principals` | List identity principals |
-| `gateco_list_groups` | List groups (IdP-synced and local directory) with live member counts. **User session only** (`gateco login`); not callable with an API key |
+| `gateco_list_groups` | List groups (IdP-synced and local directory) with live member counts. Works with a `retrieve`-scoped key against a backend from 2026-10-02 on; older backends answer that a user session is needed |
 | `gateco_resolve_principal` | Resolve a principal by email or provider subject |
 
 All tools return markdown-formatted text. Denied content is never exposed — only denial

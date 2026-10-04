@@ -6,14 +6,16 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from gateco_sdk.types.labels import Classification, Sensitivity
+
 
 class RetroactiveRegisterRequest(BaseModel):
     """Request body for ``POST /api/v1/retroactive-register``."""
 
     connector_id: str
     scan_limit: int = 1000
-    default_classification: str | None = None
-    default_sensitivity: str | None = None
+    default_classification: Classification | None = None
+    default_sensitivity: Sensitivity | None = None
     default_domain: str | None = None
     default_labels: list[str] | None = None
     grouping_strategy: str = "individual"

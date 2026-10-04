@@ -6,6 +6,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from gateco_sdk.types.labels import Classification, Sensitivity
+
 
 class PreEmbeddedChunk(BaseModel):
     """A pre-embedded chunk for direct vector storage."""
@@ -21,8 +23,8 @@ class IngestDocumentRequest(BaseModel):
     connector_id: str
     external_resource_id: str
     text: str
-    classification: str | None = None
-    sensitivity: str | None = None
+    classification: Classification | None = None
+    sensitivity: Sensitivity | None = None
     domain: str | None = None
     labels: list[str] | None = None
     metadata: dict[str, Any] | None = None

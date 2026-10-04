@@ -16,6 +16,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from gateco_sdk.types.labels import CLASSIFICATIONS, SENSITIVITIES
+
 # ---------------------------------------------------------------------------
 # Credential helpers
 # ---------------------------------------------------------------------------
@@ -443,6 +445,62 @@ async def _cmd_connectors_test(args: argparse.Namespace) -> None:
     _output(result)
 
 
+async def _cmd_connectors_get(args: argparse.Namespace) -> None:
+    """Show one connector."""
+    async with _get_client() as client:
+        result = await client.connectors.get(args.connector_id)
+    _output(result)
+
+
+def _read_config_object(args: argparse.Namespace) -> dict[str, Any]:
+    """Load the JSON object given as ``--json`` or ``--file`` (exactly one, enforced by argparse)."""
+    raw: str
+    if getattr(args, "config_file", None):
+        try:
+            raw = Path(args.config_file).read_text()
+        except OSError as exc:
+            _error(f"Cannot read --file: {exc}")
+    else:
+        raw = args.config_json
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        _error(f"Invalid JSON: {exc}")
+    if not isinstance(value, dict):
+        _error("The config must be a JSON object, e.g. '{\"table_name\": \"docs\"}'")
+    return value
+
+
+async def _cmd_connectors_get_search_config(args: argparse.Namespace) -> None:
+    """Show a connector's search config."""
+    async with _get_client() as client:
+        result = await client.connectors.get_search_config(args.connector_id)
+    _output(result)
+
+
+async def _cmd_connectors_set_search_config(args: argparse.Namespace) -> None:
+    """Set a connector's search config from a JSON object."""
+    config = _read_config_object(args)
+    async with _get_client() as client:
+        result = await client.connectors.update_search_config(args.connector_id, config)
+    _output(result)
+
+
+async def _cmd_connectors_get_ingestion_config(args: argparse.Namespace) -> None:
+    """Show a connector's ingestion config."""
+    async with _get_client() as client:
+        result = await client.connectors.get_ingestion_config(args.connector_id)
+    _output(result)
+
+
+async def _cmd_connectors_set_ingestion_config(args: argparse.Namespace) -> None:
+    """Set a connector's ingestion config from a JSON object."""
+    config = _read_config_object(args)
+    async with _get_client() as client:
+        result = await client.connectors.update_ingestion_config(args.connector_id, config)
+    _output(result)
+
+
 async def _cmd_connectors_create(args: argparse.Namespace) -> None:
     """Create a connector."""
     config = None
@@ -697,8 +755,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "file", help="Path to the file (.txt/.md are sent as text; other types are uploaded)"
     )
     ingest_parser.add_argument("--connector-id", required=True, help="Target connector ID")
-    ingest_parser.add_argument("--classification", default=None, help="Classification label")
-    ingest_parser.add_argument("--sensitivity", default=None, help="Sensitivity level")
+    ingest_parser.add_argument(
+        "--classification",
+        default=None,
+        choices=CLASSIFICATIONS,
+        help="Classification label: %(choices)s",
+    )
+    ingest_parser.add_argument(
+        "--sensitivity",
+        default=None,
+        choices=SENSITIVITIES,
+        help="Sensitivity level: %(choices)s",
+    )
     ingest_parser.add_argument("--domain", default=None, help="Domain tag")
 
     # -- ingest-batch -------------------------------------------------------
@@ -827,6 +895,24 @@ def _build_parser() -> argparse.ArgumentParser:
     conn_create.add_argument("--type", required=True, help="Connector type (e.g. pgvector)")
     conn_create.add_argument("--config", default=None, help="JSON config string")
 
+    # 1.13.0 (#2/#18): the search and ingestion configs had no CLI surface, so a
+    # user who saw `ingestion_config: null` in `connectors list` had nowhere to
+    # set it short of the console or raw HTTP. These are session-only endpoints;
+    # the CLI has a session.
+    conn_get = conn_sub.add_parser("get", help="Show one connector (config, status, readiness)")
+    conn_get.add_argument("connector_id", help="Connector ID")
+    for verb, what in (("get-search-config", "search"), ("get-ingestion-config", "ingestion")):
+        p = conn_sub.add_parser(verb, help=f"Show the {what} config (user session only)")
+        p.add_argument("connector_id", help="Connector ID")
+    for verb, what in (("set-search-config", "search"), ("set-ingestion-config", "ingestion")):
+        p = conn_sub.add_parser(
+            verb, help=f"Set the {what} config from a JSON object (user session only)"
+        )
+        p.add_argument("connector_id", help="Connector ID")
+        src = p.add_mutually_exclusive_group(required=True)
+        src.add_argument("--json", dest="config_json", help="The config as a JSON object")
+        src.add_argument("--file", dest="config_file", help="Path to a file holding the JSON object")
+
     # -- policies -----------------------------------------------------------
     pol_parser = subparsers.add_parser("policies", help="Policy management")
     pol_sub = pol_parser.add_subparsers(dest="subcommand")
@@ -915,6 +1001,11 @@ _SUB_DISPATCH: dict[str, dict[str, Any]] = {
         "list": _cmd_connectors_list,
         "test": _cmd_connectors_test,
         "create": _cmd_connectors_create,
+        "get": _cmd_connectors_get,
+        "get-search-config": _cmd_connectors_get_search_config,
+        "set-search-config": _cmd_connectors_set_search_config,
+        "get-ingestion-config": _cmd_connectors_get_ingestion_config,
+        "set-ingestion-config": _cmd_connectors_set_ingestion_config,
     },
     "policies": {
         "list": _cmd_policies_list,

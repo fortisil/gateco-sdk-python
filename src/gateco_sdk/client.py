@@ -7,6 +7,11 @@ import os
 from typing import Any
 
 from gateco_sdk._auth import TokenManager
+from gateco_sdk._credentials import (
+    default_credentials_path,
+    load_stored_session,
+    save_stored_session,
+)
 from gateco_sdk._transport import Transport
 from gateco_sdk.errors import AuthenticationError
 from gateco_sdk.resources.answers import AnswersResource
@@ -49,6 +54,12 @@ class AsyncGatecoClient:
     Args:
         base_url: Root URL of the Gateco API. Defaults to GATECO_BASE_URL, else https://api.gateco.ai.
         api_key: Optional static API key (mutually exclusive with login flow).
+            Defaults to ``GATECO_API_KEY``.
+        access_token: Optional JWT from a previous login. When neither this nor a key
+            is given, the client reads the session ``gateco login`` stored in
+            ``~/.gateco/credentials.json`` (1.13.0) and writes refreshed tokens back,
+            so one login serves the CLI, the MCP server and your own code. A stored
+            session also supplies ``base_url`` when no argument or env var does.
         timeout: HTTP request timeout in seconds.
         max_retries: Maximum automatic retries for 429 / 5xx responses.
         retry_backoff_factor: Multiplier for exponential back-off.
@@ -71,6 +82,20 @@ class AsyncGatecoClient:
         max_retries: int = 2,
         retry_backoff_factor: float = 0.5,
     ) -> None:
+        resolved_key = api_key or os.environ.get("GATECO_API_KEY")
+        # 1.13.0 (#8): no credential at all -> the session `gateco login` stored.
+        self._session_file = None
+        self._session_base_url: str | None = None
+        if not resolved_key and not access_token:
+            stored = load_stored_session()
+            if stored:
+                self._session_file = default_credentials_path()
+                self._session_base_url = stored.get("base_url")
+                if base_url is None and not os.environ.get("GATECO_BASE_URL") and stored.get("base_url"):
+                    # The CLI stores the URL it was given, sometimes with /api.
+                    base_url = str(stored["base_url"]).removesuffix("/api")
+                access_token = stored["access_token"]
+                refresh_token = stored.get("refresh_token")
         base_url = resolve_base_url(base_url)
         self._transport = Transport(
             base_url,
@@ -78,9 +103,11 @@ class AsyncGatecoClient:
             max_retries=max_retries,
             retry_backoff_factor=retry_backoff_factor,
         )
-        self._token_manager = TokenManager(api_key=api_key or os.environ.get("GATECO_API_KEY"))
+        self._token_manager = TokenManager(api_key=resolved_key)
         if access_token:
             self._token_manager.set_tokens(access_token, refresh_token)
+        if self._session_base_url is None:
+            self._session_base_url = base_url
 
         # Lazy resource namespaces
         self._answers: AnswersResource | None = None
@@ -372,6 +399,27 @@ class AsyncGatecoClient:
                     token_resp.access_token,
                     token_resp.refresh_token,
                 )
+                self._persist_session()
+
+    def _persist_session(self) -> None:
+        """Write refreshed tokens back to the file they were loaded from (1.13.0, #8).
+
+        Only when the session came from ``~/.gateco/credentials.json``: tokens passed
+        explicitly or obtained via ``login()`` are the caller's to store. Refresh
+        rotates, so without this the CLI's next invocation would present a revoked
+        refresh token.
+        """
+        if self._session_file is None or not self._token_manager.access_token:
+            return
+        try:
+            save_stored_session(
+                self._token_manager.access_token,
+                self._token_manager.refresh_token,
+                self._session_base_url,
+                path=self._session_file,
+            )
+        except OSError:
+            pass
 
     # ------------------------------------------------------------------
     # Context manager
@@ -426,7 +474,7 @@ class GatecoClient:
         retry_backoff_factor: float = 0.5,
     ) -> None:
         self._async_client = AsyncGatecoClient(
-            resolve_base_url(base_url),
+            base_url,
             api_key=api_key,
             access_token=access_token,
             refresh_token=refresh_token,

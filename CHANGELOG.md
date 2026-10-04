@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.13.0] - 2026-10-02
+
+### Added
+- `AsyncGatecoClient()` / `GatecoClient()` constructed with no credential at all (no
+  `api_key`, no `GATECO_API_KEY`, no `access_token`) now read the session that
+  `gateco login` stored in `~/.gateco/credentials.json`, use its `base_url` when none is
+  given, and write refreshed tokens back. Refresh rotates, so until now a second process
+  reusing that file revoked the CLI's session and both failed with
+  `Invalid or expired refresh token` (cold run 2026-09-25, finding #8, the cause of #16
+  and #19). `GATECO_CREDENTIALS_FILE` overrides the path.
+- CLI: `gateco connectors get <id>`, `get-search-config`, `set-search-config`,
+  `get-ingestion-config`, `set-ingestion-config` (`--json '{...}'` or `--file path`).
+  `ingestion_config: null` in `connectors list` finally has a verb to set it (#2, #18).
+  These endpoints are session-only; the CLI has a session.
+- `gateco_sdk.types.Classification` / `Sensitivity` (`Literal` types) and the
+  `CLASSIFICATIONS` / `SENSITIVITIES` tuples. Request models and the `classification` /
+  `sensitivity` parameters of `ingest.*`, `data_catalog.*` and `retroactive.register` are
+  typed with them, so editors complete the vocabulary and type checkers reject a value the
+  server would 422 (#10, #12, #13). `gateco ingest --classification/--sensitivity` list the
+  choices in `--help`. Response models keep `str`.
+- MCP: `gateco_list_groups` works with an API key that has the `retrieve` scope against a
+  backend from 2026-10-02 or later (`GET /api/groups` joined that scope). Only
+  `gateco_check_access` still needs a user session.
+
+- MCP activation gate: `tests/mcp_activation/run.py` calls all seven tools from the
+  built wheel against a live backend on a fresh Free org under the documented host
+  configuration and fails if a denied row's text ever reaches tool output; CI runs it
+  as the `mcp-activation` job. `RELEASING.md` is the publish checklist every SDK tag
+  (which is also an MCP registry release) now follows.
+
+### Changed
+- README: which routes accept an API key, by scope, and which need a session; a CLI
+  section with a PDF ingest example next to the `.txt` one.
+- MCP: `gateco_retrieve` no longer prints `Duration: n/a` on live retrievals (the
+  execute response carries no top-level timing); the segment appears only when
+  `duration_ms` or `latency_ms` is present.
+
 ## [1.12.1] - 2026-09-25
 
 ### Fixed

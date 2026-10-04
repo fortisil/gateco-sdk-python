@@ -12,6 +12,7 @@ from gateco_sdk.types.ingestion import (
     IngestDocumentResponse,
     IngestFileResponse,
 )
+from gateco_sdk.types.labels import Classification, Sensitivity
 
 if TYPE_CHECKING:
     from gateco_sdk.client import AsyncGatecoClient
@@ -37,8 +38,8 @@ class IngestionResource:
         external_resource_id: str,
         text: str,
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         labels: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
@@ -55,8 +56,8 @@ class IngestionResource:
             connector_id: Target connector (must be Tier 1).
             external_resource_id: Caller-defined resource identifier.
             text: Document text to embed and store.
-            classification: Optional classification label.
-            sensitivity: Optional sensitivity level.
+            classification: One of ``public`` / ``internal`` / ``confidential`` / ``restricted``.
+            sensitivity: One of ``low`` / ``medium`` / ``high`` / ``critical``.
             domain: Optional domain tag.
             labels: Optional list of labels.
             metadata: Optional arbitrary metadata dict.
@@ -140,8 +141,8 @@ class IngestionResource:
         external_resource_id: str,
         pre_embedded_chunks: list[dict[str, Any]],
         *,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         metadata: dict[str, Any] | None = None,
         idempotency_key: str | None = None,
     ) -> IngestDocumentResponse:
@@ -151,8 +152,8 @@ class IngestionResource:
             connector_id: Target connector (must be Tier 1).
             external_resource_id: Caller-defined resource identifier.
             pre_embedded_chunks: List of dicts with 'text' and 'vector' keys.
-            classification: Optional classification label.
-            sensitivity: Optional sensitivity level.
+            classification: One of ``public`` / ``internal`` / ``confidential`` / ``restricted``.
+            sensitivity: One of ``low`` / ``medium`` / ``high`` / ``critical``.
             metadata: Optional arbitrary metadata dict.
             idempotency_key: Optional idempotency key for safe retries.
         """
@@ -179,8 +180,8 @@ class IngestionResource:
         file_path: str,
         *,
         external_resource_id: str | None = None,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         domain: str | None = None,
         labels: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
@@ -192,8 +193,8 @@ class IngestionResource:
             connector_id: Target connector (must be Tier 1).
             file_path: Path to the file on disk.
             external_resource_id: Optional resource identifier. Auto-generated if omitted.
-            classification: Optional classification label.
-            sensitivity: Optional sensitivity level.
+            classification: One of ``public`` / ``internal`` / ``confidential`` / ``restricted``.
+            sensitivity: One of ``low`` / ``medium`` / ``high`` / ``critical``.
             domain: Optional domain tag.
             labels: Optional list of labels (sent as comma-separated string).
             metadata: Optional metadata dict (sent as JSON string).
@@ -233,8 +234,8 @@ class IngestionResource:
         file_paths: list[str],
         *,
         domain: str | None = None,
-        classification: str | None = None,
-        sensitivity: str | None = None,
+        classification: Classification | None = None,
+        sensitivity: Sensitivity | None = None,
         labels: list[str] | None = None,
     ) -> BatchFileIngestResponse:
         """Upload and ingest multiple files in a single batch.
@@ -243,8 +244,8 @@ class IngestionResource:
             connector_id: Target connector (must be Tier 1).
             file_paths: List of file paths to upload.
             domain: Optional domain tag applied to all files.
-            classification: Optional classification applied to all files.
-            sensitivity: Optional sensitivity applied to all files.
+            classification: Applied to all files; one of ``public`` / ``internal`` / ``confidential`` / ``restricted``.
+            sensitivity: Applied to all files; one of ``low`` / ``medium`` / ``high`` / ``critical``.
             labels: Optional labels applied to all files.
         """
         form_data: dict[str, Any] = {"connector_id": connector_id}

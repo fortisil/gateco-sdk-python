@@ -54,6 +54,40 @@ class TestFormatRetrieval:
         assert "Secret" not in out
         assert "Confidential Data Policy" in out
 
+    def test_denied_text_is_never_rendered_on_either_path(self):
+        """The invariant the product rests on, on the surface a model reads
+        (Jordi, 27 Sep, Q4): a denied result that DOES carry text (as a hostile
+        or buggy server might send) contributes a count and a reason, never the
+        text. Both code paths: ``results`` and the ``outcomes`` fallback."""
+        secret = "SALARY TABLE: CEO 900k"
+        via_results = SecuredRetrieval(
+            outcome="partial", allowed_chunks=1, denied_chunks=1,
+            results=[
+                FilterResult(vector_id="v1", score=0.9, text="public text", granted=True, resource_id="pub"),
+                FilterResult(vector_id="v2", score=0.8, text=secret, granted=False, resource_id="hr-pay"),
+            ],
+        )
+        via_outcomes = SecuredRetrieval(
+            outcome="denied", granted_count=0, denied_count=1,
+            outcomes=[RetrievalOutcome(resource_id="hr-pay", score=0.8, granted=False, text=secret)],
+        )
+        for r in (via_results, via_outcomes):
+            out = format_retrieval(r)
+            assert secret not in out
+            assert "SALARY" not in out
+            assert "**Denied:** 1" in out
+        assert "public text" in format_retrieval(via_results)
+        assert "1 chunk(s) denied by policy" in format_retrieval(via_outcomes)
+
+    def test_duration_is_omitted_when_the_response_carries_no_timing(self):
+        """Live execute responses have no duration_ms; printing 'n/a' read as a
+        missing measurement. latency_ms (retrieval records) is accepted too."""
+        out = format_retrieval(SecuredRetrieval(outcome="allowed", allowed_chunks=1, denied_chunks=0))
+        assert "Duration" not in out
+        assert "n/a" not in out
+        out2 = format_retrieval(SecuredRetrieval(outcome="allowed", allowed_chunks=1, denied_chunks=0, latency_ms=12.4))
+        assert "**Duration:** 12ms" in out2
+
     def test_with_outcomes_fallback(self):
         r = SecuredRetrieval(
             outcome="full",

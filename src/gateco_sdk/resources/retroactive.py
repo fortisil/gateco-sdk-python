@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from gateco_sdk.types.labels import Classification, Sensitivity
 from gateco_sdk.types.retroactive import (
     RetroactiveRegisterRequest,
     RetroactiveRegisterResponse,
@@ -27,8 +28,8 @@ class RetroactiveResource:
         connector_id: str,
         *,
         scan_limit: int = 1000,
-        default_classification: str | None = None,
-        default_sensitivity: str | None = None,
+        default_classification: Classification | None = None,
+        default_sensitivity: Sensitivity | None = None,
         default_domain: str | None = None,
         default_labels: list[str] | None = None,
         grouping_strategy: str = "individual",
@@ -42,8 +43,8 @@ class RetroactiveResource:
         Args:
             connector_id: The connector to scan (must be Tier 1).
             scan_limit: Maximum vectors to scan (1-10000).
-            default_classification: Default classification for new resources.
-            default_sensitivity: Default sensitivity for new resources.
+            default_classification: Default for new resources; one of ``public`` / ``internal`` / ``confidential`` / ``restricted``.
+            default_sensitivity: Default for new resources; one of ``low`` / ``medium`` / ``high`` / ``critical``.
             default_domain: Default domain for new resources.
             default_labels: Default labels for new resources.
             grouping_strategy: How to group vectors into resources
